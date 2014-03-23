@@ -11,7 +11,7 @@ A simple command line music player tailored for NetEase Music.
 Written in `Node.js`
 
 ##Usage
-###Require components (npm install ... )
+###Required components `npm install ...`
 * request
 * colorful
 * prompt
@@ -19,7 +19,7 @@ Written in `Node.js`
 * term-list
 
 ### Run
-`$ node libs/cli.js`
+`$./bin/cli`
 
 
 ##Installation
