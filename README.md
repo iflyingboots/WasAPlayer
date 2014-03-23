@@ -4,8 +4,7 @@ NeteasePlayer
 A simple command line music player tailored for NetEase Music.
 
 ##Screenshot
-![](http://incognita.u.qiniudn.com/NeteasePlayer_screenshot.png
-)
+![](http://incognita.u.qiniudn.com/NeteasePlayer_screenshot_v0.2.png)
 
 ##Details
 Written in `Node.js`
@@ -16,7 +15,7 @@ Written in `Node.js`
 * colorful
 * prompt
 * player
-* term-list
+* term-list-bar
 
 ### Run
 `$./bin/cli`
