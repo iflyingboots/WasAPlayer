@@ -22,8 +22,14 @@ Written in `Node.js`
 `$./bin/cli`
 
 
-##Installation
-@TODO
+##TODO
+* View play list
+* Play songs by artists
+* Search artists
+* Lyric display
+* Show bit rate?
+* Download music
+
 
 ##Thanks
 Inspired by [https://github.com/turingou/douban.fm](https://github.com/turingou/douban.fm)

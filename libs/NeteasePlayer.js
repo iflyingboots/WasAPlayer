@@ -1,7 +1,6 @@
 /*
  * @Author: Xin Wang
  * @Date:   2014-03-22 11:59:27
- * @Last Modified time: 2014-03-23 16:15:56
  */
 
 // var Player = require('player');
@@ -148,10 +147,15 @@ NeteasePlayer.prototype.stopPlaying = function() {
  */
 NeteasePlayer.prototype.addToList = function(songId) {
     var self = this;
-    console.log(color.cyan('Added ' + self.songs[songId]));
+    console.log(color.cyan('Adding ' + self.songs[songId] + ' ...'));
     sdk.songDetail(songId, function(data) {
         var songUrl = data[0]['mp3Url'];
         self.addPlaylist(songId, songUrl);
+        console.log(color.cyan('Added.'));
+        // if only one song in the queue, play it
+        if (self.player.list.length === 1) {
+            self.play();
+        };
     });
 }
 
@@ -197,15 +201,14 @@ NeteasePlayer.prototype.play = function() {
         var finished = self.player.list.shift()['songId'];
         console.log('Finish playing: ' + self.songs[finished]);
         self.updateSongList(finished, '')
+        if (self.player.list.length > 0) {
+            self.play();
+        };
     });
 
     self.player.on('error', function(err) {
         console.log('Playing error: ' + err);
     });
-}
-
-NeteasePlayer.prototype.stop = function() {
-    return this.player.stop();
 }
 
 NeteasePlayer.prototype.createMenu = function(callback) {

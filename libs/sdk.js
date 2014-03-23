@@ -1,7 +1,6 @@
 /*
  * @Author: Xin Wang
  * @Date:   2014-03-22 11:56:10
- * @Last Modified time: 2014-03-23 14:11:56
  */
 
 var request = require('request'),
