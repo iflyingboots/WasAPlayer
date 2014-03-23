@@ -25,6 +25,10 @@ Written in `Node.js`
 ##Installation
 @TODO
 
+###For windows users
+The quick and offical way:
+[http://music.163.com/#/download](http://music.163.com/#/download)
+
 ##Thanks
 Inspired by [https://github.com/turingou/douban.fm](https://github.com/turingou/douban.fm)
 
