@@ -19,7 +19,7 @@ Written in `Node.js`
 * term-list
 
 ### Run
-`$ node libs/cli.js`
+`$./bin/cli`
 
 
 ##Installation
