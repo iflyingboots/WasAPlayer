@@ -31,7 +31,7 @@ exports.searchArtist = function(keyword, callback) {
         form: {
             s: keyword,
             type: 100,
-            limit: 90,
+            limit: 10,
             total: 'true',
             offset: 0,
         }
@@ -68,6 +68,9 @@ exports.searchSongs = function(keyword, limit, callback) {
         if (!err && res.statusCode == 200) {
             var result = {};
             var jsonData = JSON.parse(body)['result']['songs'];
+            if (jsonData.length < 1) {
+                return cb(result);
+            };
             jsonData.forEach(function(item){
                 var text = color.green(item['name']);
                 text += color.grey(' [' + item['album']['name'] + ']');

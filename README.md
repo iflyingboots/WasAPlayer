@@ -15,7 +15,6 @@ Written in `Node.js`
 * colorful
 * prompt
 * player
-* term-list-bar
 
 ### Run
 `$./bin/cli`

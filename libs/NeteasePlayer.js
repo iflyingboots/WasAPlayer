@@ -8,23 +8,66 @@ var sdk = require('./sdk'),
     prompt = require('prompt'),
     Player = require('player'),
     c = require('colorful'),
-    termList = require('term-list-bar');
+    termList = require('./term');
+
+var mainMenuKeys = {
+    'return': 'mainMenuDispatch',
+    'o': 'mainMenuDispatch',
+    's': 'searchSongs',
+    // 'a': 'searchArtists',
+    'l': 'showPlaylistMenu',
+    'q': 'quit',
+};
+
+var songlistMenuKeys = {
+    'q': 'showMainMenu',
+    'return': 'forcePlay',
+    'o': 'forcePlay',
+    'a': 'addToList',
+    's': 'togglePlaying',
+    'n': 'playNext',
+    'i': 'addAllToList',
+    'l': 'showPlaylistMenu',
+    // debug
+    'z': 'debugPlaylist',
+    'x': 'isInPlaylist',
+};
+
+var playlistMenuKeys = {
+    'l': 'showSonglistMenu',
+    'q': 'showMainMenu',
+};
 
 var NeteasePlayer = function() {
-    var self = this;
-    self.isShowLrc = false;
-    self.isPlaying = false;
-    self.state = '';
-    self.songs = {};
-    self.player = new Player([], {
+    this.isShowLrc = false;
+    this.mainMenuKeys = mainMenuKeys;
+    this.songlistMenuKeys = songlistMenuKeys;
+    this.playlistMenuKeys = playlistMenuKeys;
+    this.prevState = 'showMainMenu';
+    this.state = '';
+    this.songs = {};
+    this.player = new Player([], {
         cache: true
     });
-    console.log(self.shorthands);
+}
+
+NeteasePlayer.prototype.debugPlaylist = function() {
+    console.log('player.list');
+    console.log(this.player.list);
+    console.log('player.playing');
+    console.log(this.player.playing);
+    console.log('player.stopAt');
+    console.log(this.player.stopAt);
+    console.log('player.status');
+    console.log(this.player.status);
+    console.log('isPlaying?');
+    console.log(utils.isPlaying(this.player));
+    console.log('isStopped?');
+    console.log(utils.isStopped(this.player));
 }
 
 NeteasePlayer.prototype.init = function(callback) {
-    this.setBarText('', '');
-    return this.createMenu(callback);
+    return this.showMainMenu();
 }
 
 /**
@@ -46,12 +89,14 @@ NeteasePlayer.prototype.searchSongs = function() {
     prompt.start();
     prompt.get(['keywords'], function(err, res) {
         if (err || res.keywords === '') {
-            return self.createMenu();
+            self.menu.start();
+            return self.showMainMenu();
         };
-        console.log(c.green('Searching for “' + res.keywords + '”'));
+        utils.log(c.green('Searching for “' + res.keywords + '”'));
         sdk.searchSongs(res.keywords, 15, function(data) {
             self.songs = data;
-            return self.displaySongs();
+            self.state = 'searchSongs';
+            return self.showSonglistMenu();
         });
     });
 }
@@ -59,7 +104,7 @@ NeteasePlayer.prototype.searchSongs = function() {
 /**
  * Process main menu events
  */
-NeteasePlayer.prototype.menuDispatch = function(item) {
+NeteasePlayer.prototype.mainMenuDispatch = function(item) {
     var self = this;
     if (item === 'searchSongs') {
         return self.searchSongs();
@@ -70,31 +115,17 @@ NeteasePlayer.prototype.menuDispatch = function(item) {
 
 /**
  * Add song to playlist
- * self.playlist = [{songID:Int, src:String}, ...]
+ * self.player.playlist = [{songId:Int, src:String, _id:Int}, ...]
  * @param {int} songId
  * @param {string} url
  */
-NeteasePlayer.prototype.addPlaylist = function(songId, url) {
+NeteasePlayer.prototype.addPlaylist = function(songId, text, url) {
     var self = this;
     return self.player.add({
         songId: songId,
+        text: text,
         src: url,
     });
-}
-
-/**
- * Draw songs list menu
- */
-NeteasePlayer.prototype.drawSongList = function() {
-    var self = this;
-    if (!self.songList) {
-        self.songList = new termList();
-    };
-    self.songList.setTopText(utils.playHelp());
-    for (var key in self.songs) {
-        self.songList.add(key, self.songs[key]);
-    };
-    return self.songList.draw();
 }
 
 /**
@@ -104,61 +135,73 @@ NeteasePlayer.prototype.drawSongList = function() {
  */
 NeteasePlayer.prototype.updateSongList = function(songId, state) {
     var self = this;
+    if (self.state === 'mainMenu') return;
     var menuItem = self.songs[songId];
-    self.songList.get(songId).label = menuItem + c.yellow(' ' + state);
-    return self.songList.draw();
+    var item = self.menu.get(songId);
+    if (!item) return;
+    item.label = menuItem + c.yellow(' ' + state);
+    self.menu.draw();
+}
+
+
+NeteasePlayer.prototype.showPlaylistMenu = function() {
+    var self = this;
+    self.state = 'playlistMenu';
+    self.menu.removeAll();
+    self.menu.setTopText(utils.playlistHelp());
+    // empty playlist?
+    if (self.player.list.length === 0) {
+        self.menu.add(0, c.grey('Empty'));
+        self.menu.draw();
+        return;
+    };
+    // refill bullets
+    self.player.list.forEach(function(item) {
+        self.menu.add(item.songId, item.text);
+    });
+    self.updatePlayingState();
+    self.menu.draw();
 }
 
 /**
  * Display song list and handle events
  */
-NeteasePlayer.prototype.displaySongs = function() {
+NeteasePlayer.prototype.showSonglistMenu = function() {
     var self = this;
-    self.state = 'songList';
-    self.drawSongList();
-    self.songList.start();
-    self.songList.on('keypress', function(key, item) {
-        // item -> songId
-        if (key.name === 'q') {
-            self.songList.stop();
-            self.createMenu();
-            return self.menu.draw();
-        };
-        if (key.name === 'return' || key.name === 'o') {
-            return self.forcePlay(item);
-        };
-        if (key.name === 'p') {
-            return self.togglePlaying();
-            // return self.stopPlaying();
-        };
-        if (key.name === 'a') {
-            return self.addToList(item);
-        };
-    });
+    self.menu.removeAll();
+    self.menu.setTopText(utils.playHelp());
+    // empty?
+    if (utils.objEmpty(self.songs)) {
+        self.menu.add(0, c.grey('Empty'));
+        self.menu.draw();
+        self.state = 'songlistMenu';
+        return;
+    };
+    for (var songId in self.songs) {
+        self.menu.add(songId, self.songs[songId]);
+    };
+    // deal with re-enter problem
+    if (self.state === 'searchSongs') {
+        self.menu.start();
+    };
+    self.state = 'songlistMenu';
+    self.updatePlayingState();
+    self.menu.draw();
 }
 
-/**
- * Toggle play state
- */
-NeteasePlayer.prototype.togglePlaying = function() {
-    if (this.isPlaying) {
-        this.stopPlaying();
-    } else {
-        this.play();
-    };
-}
-
-/**
- * Stop playing music
- */
-NeteasePlayer.prototype.stopPlaying = function() {
+NeteasePlayer.prototype.updatePlayingState = function() {
     var self = this;
-    if (self.player.list.length > 0) {
-        var playingSongId = self.player.list[0]['songId'];
-        self.updateSongList(playingSongId, '');
-    };
-    self.isPlaying = false;
-    return self.player.stop();
+    if (self.state === 'mainMenu') return;
+    // redraw the list, have to deal with flags
+    // well, bad algorithm, but node.js is fast ...
+    for (var songId in self.songs) {
+        // if the current playing songId
+        if (self.player.status === 'playing' && songId === self.player.playing['songId']) {
+            self.updateSongList(songId, 'Playing');
+        } else {
+            self.updateSongList(songId, '');
+        };
+    }
 }
 
 /**
@@ -166,19 +209,44 @@ NeteasePlayer.prototype.stopPlaying = function() {
  * @param {int} songId
  */
 NeteasePlayer.prototype.addToList = function(songId) {
-    var self = this;
-    console.log(c.cyan('Adding ' + self.songs[songId] + ' ...'));
+    var self = this;;
+    if (songId === 'searchSongs') return;
+    if (self.isInPlaylist(songId)) return;
+    utils.log('Adding ' + self.songs[songId] + ' ...');
     sdk.songDetail(songId, function(data) {
+        if (data.length === 0) {
+            utils.log('Error: adding unknown song url');
+            return;
+        };
         var songUrl = data[0]['mp3Url'];
-        self.addPlaylist(songId, songUrl);
-        console.log(c.cyan('Added.'));
-        // if only one song in the queue, play it
-        if (self.player.list.length === 1) {
+        self.addPlaylist(songId, self.songs[songId], songUrl);
+        utils.log('Added ' + self.songs[songId] + '.');
+        if (self.player.status !== 'playing') {
             self.play();
         };
     });
 }
 
+/**
+ * Add all songs shown in screen to the playlist
+ */
+NeteasePlayer.prototype.addAllToList = function() {
+    var self = this;
+    utils.log(c.cyan('Adding songs to playlist ...'));
+    for (var songId in self.songs) {
+        if (!self.isInPlaylist(songId)) {
+            self.addToList(songId);
+        };
+    };
+}
+
+
+NeteasePlayer.prototype.isInPlaylist = function(songId) {
+    var playlistSongIds = this.player.list.map(function(item) {
+        return item.songId;
+    });
+    return (playlistSongIds.indexOf(songId) >= 0);
+}
 
 /**
  * Force to play the selected song, clean the queue
@@ -186,23 +254,10 @@ NeteasePlayer.prototype.addToList = function(songId) {
  */
 NeteasePlayer.prototype.forcePlay = function(songId) {
     var self = this;
-    console.log(c.yellow('Connecting server ... '));
-    if (self.player.list.length > 0) {
-        // reset label
-        if (self.player.list[0]['songid'] in self.songs) {
-            var previousSongId = self.player.list.shift()['songId'];
-            self.updateSongList(previousSongId, '');
-        };
-        // stop playing
-        self.player.stop();
-        // clean playlsit
-        self.player.list = [];
-    };
-    sdk.songDetail(songId, function(data) {
-        var songUrl = data[0]['mp3Url'];
-        self.addPlaylist(songId, songUrl);
-        self.play();
-    });
+    utils.log('Connecting server ... ');
+    self.stopPlaying();
+    self.player.list = [];
+    return self.addToList(songId);
 }
 
 /**
@@ -210,32 +265,91 @@ NeteasePlayer.prototype.forcePlay = function(songId) {
  */
 NeteasePlayer.prototype.play = function() {
     var self = this;
-    console.log(c.yellow('Buffering ...'));
-    self.player.play();
-    self.isPlaying = true;
-    // current playing song id
-    var songId = self.player.list[0]['songId'];
+    if (typeof(self.player) === 'undefined') return;
+    if (self.player !== null && utils.isPlaying(self.player)) return;
+
+    // if something in the playlist, continue playing from previous one
+    if (typeof(self.player.stopAt) !== 'undefined') {
+        self.player.play(null, self.player.list.slice(self.player.stopAt._id));
+        self.player.stopAt = null;
+    } else {
+        self.player.play();
+    };
+
+
     self.player.on('playing', function(playingItem) {
-        self.updateSongList(songId, 'Playing');
-        self.setBarText('Now playing:', self.songs[songId]);
-        self.songList.draw();
+        var playingSongId = playingItem['songId'];
+        self.updateSongList(playingSongId, 'Playing');
+        self.setBarText('Now playing:', self.songs[playingSongId]);
+        self.menu.draw();
     });
 
     self.player.on('playend', function(item) {
-        // delete the played song
-        var finished = self.player.list.shift()['songId'];
+        var playedSongId = self.player.playing['songId'];
+        self.updateSongList(playedSongId, '');
         self.setBarText('', '');
-        if (self.state === 'songList' && (finished in self.songs)) {
-            self.updateSongList(finished, '');
-        };
-        if (self.player.list.length > 0) {
-            self.play();
-        };
+        self.menu.draw();
     });
 
+    self.player.on('downloading', function(url) {
+        utils.log('Buffering ... ' + url);
+    })
+
     self.player.on('error', function(err) {
-        console.log('Playing error: ' + err);
+        utils.log('Playing error: ' + err);
     });
+}
+
+NeteasePlayer.prototype.playNext = function() {
+    var self = this;
+    // if not playing, do nothing
+    if (utils.isStopped(self.player)) return false;
+    // why i get 'stopped' when call next() twice??
+    // black maggic to tackle this
+    var playing = self.player.playing,
+        list = self.player.list,
+        next = list[playing._id + 1];
+    if (!next) {
+        // continue playing the current song
+        return false;
+    }
+    // play next one
+    self.player.stop();
+    self.player.status = 'playing';
+    self.player.playing = next;
+    self.player.stopAt = null;
+    self.player.play(null, list.slice(next._id));
+
+    return self.updatePlayingState();
+}
+
+/**
+ * Stop playing music
+ */
+NeteasePlayer.prototype.stopPlaying = function() {
+    var self = this;
+    if (utils.isStopped(self.player)) return false;
+    // set up another object
+    self.player.stopAt = self.player.playing;
+    self.player.playing = null;
+    self.player.stop();
+    self.player.status = 'stopped';
+    self.updatePlayingState();
+    self.setBarText('', '');
+    return self.menu.draw();
+}
+
+/**
+ * Toggle play state
+ */
+NeteasePlayer.prototype.togglePlaying = function() {
+    if (utils.isPlaying(this.player)) {
+        return this.stopPlaying();
+    } else if(utils.isStopped(this.player)) {
+        return this.play();
+    };
+    // shouldn't reach here, right?
+    return false;
 }
 
 /**
@@ -245,45 +359,51 @@ NeteasePlayer.prototype.play = function() {
  */
 NeteasePlayer.prototype.setBarText = function(state, text) {
     var self = this;
+    if (!self.menu) {
+        return;
+    };
     var renderedText = '';
-    if(state !== '') {
+    if (state !== '') {
         renderedText = c.cyan('» ' + state + ' ');
     };
-    if (self.menu) {
-        self.menu.setBarText(renderedText + text);
-    };
-    if (self.songList) {
-        self.songList.setBarText(renderedText + text);
-    };
+    self.menu.setBarText(renderedText + text);
 }
 
 /**
  * Create main menu
- * @param  {Function} callback
  */
-NeteasePlayer.prototype.createMenu = function(callback) {
+NeteasePlayer.prototype.showMainMenu = function() {
     var self = this;
-    self.state = 'menu';
-    self.menu = new termList();
+    if (!self.menu) {
+        self.menu = new termList();
+    };
+    self.menu.removeAll();
     self.menu.setTopText(utils.logo());
     // self.menu.add('discover', '发现音乐');
-    self.menu.add('searchSongs', '搜索歌曲 ' + c.grey('(s)'));
-    // self.menu.add('searchArtists', '搜索歌手 ' + c.grey('(a)'));
-    // self.menu.add('showPlaylist', '播放列表 ' + c.grey('(l)'));
-    self.menu.start();
-    self.menu.on('keypress', function(key, item) {
-        if (key.name === 'return' || key.name === 'o') {
-            return self.menuDispatch(item);
-        };
-
-        if (key.name === 's') {
-            return self.searchSongs();
-        };
-
-        if (key.name === 'q') {
-            return self.quit();
-        };
-    });
+    self.menu.add('searchSongs', '搜索歌曲 ' + c.grey('[s]'));
+    // self.menu.add('searchArtists', '搜索歌手 ' + c.grey('[a]'));
+    self.menu.add('showPlaylistMenu', '播放列表 ' + c.grey('[l]'));
+    self.menu.select('searchSongs');
+    self.menu.draw();
+    // only one menu policy
+    // and only one key event listener
+    if (self.state === '') {
+        self.menu.start();
+        self.menu.on('keypress', function(key, item) {
+            if (self.state === 'mainMenu') {
+                if (!self.mainMenuKeys[key.name]) return false;
+                return self[self.mainMenuKeys[key.name]](item);
+            } else if (self.state === 'playlistMenu') {
+                if (!self.playlistMenuKeys[key.name]) return false;
+                return self[self.playlistMenuKeys[key.name]](item);
+            } else if (self.state === 'songlistMenu') {
+                if (!self.songlistMenuKeys[key.name]) return false;
+                return self[self.songlistMenuKeys[key.name]](item);
+            };
+            return false;
+        });
+    };
+    self.state = 'mainMenu';
 
 }
 
