@@ -219,8 +219,9 @@ NeteasePlayer.prototype.showSonglistMenu = function() {
     // empty?
     if (utils.objEmpty(self.songs)) {
         self.menu.add(0, c.grey('Empty'));
-        self.menu.draw();
         self.state = 'songlistMenu';
+        self.menu.draw();
+        self.menu.start();
         return;
     };
     for (var songId in self.songs) {
@@ -248,8 +249,9 @@ NeteasePlayer.prototype.showAlbumlistMenu = function() {
     // empty?
     if (utils.objEmpty(self.albums)) {
         self.menu.add(0, c.grey('Empty'));
-        self.menu.draw();
         self.state = 'albumlistMenu';
+        self.menu.draw();
+        self.menu.start();
         return;
     };
     for (var albumId in self.albums) {
@@ -301,6 +303,19 @@ NeteasePlayer.prototype.addAllToList = function() {
 }
 
 /**
+ * Add all songs in the album to the playlist
+ */
+NeteasePlayer.prototype.addAlbumToList = function(albumId) {
+    var self = this;
+    if (albumId === 'searchSongs' || albumId === 'searchAlbums') return;
+    utils.log(c.cyan('Loading songs ...'));
+    sdk.albumDetail(albumId, function(data) {
+        self.songs = data;
+        self.addAllToList();
+    });
+}
+
+/**
  * Is the given songId in the playlist
  * @param  {String}  songId
  * @return {Boolean}
@@ -346,7 +361,8 @@ NeteasePlayer.prototype.play = function() {
     if (self.isPlaying()) return;
     // ensure only one entry can be played
     if (self.player.speakers.length > 1) {
-        return self.stopPlaying();
+        self.stopPlaying();
+        return;
     }
 
     // if something in the playlist, continue playing from previous one
