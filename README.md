@@ -9,12 +9,16 @@ A simple command line music player tailored for NetEase Music.
 ##Details
 Written in `Node.js`
 
+WARNING: VERY UNSTABLE NOW
+
 ##Usage
 ###Required components `npm install ...`
 * request
 * colorful
 * prompt
 * player
+* term-canvas
+* keypress
 
 ### Run
 `$./bin/cli`
