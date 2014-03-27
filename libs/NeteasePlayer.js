@@ -61,13 +61,17 @@ NeteasePlayer.prototype.debugPlaylist = function() {
     console.log('player.status');
     console.log(this.player.status);
     console.log('isPlaying?');
-    console.log(utils.isPlaying(this.player));
-    console.log('isStopped?');
-    console.log(utils.isStopped(this.player));
+    console.log(this.isPlaying());
 }
 
 NeteasePlayer.prototype.init = function(callback) {
     return this.showMainMenu();
+}
+
+NeteasePlayer.prototype.isPlaying = function() {
+    if (typeof(this.player) === 'undefined') return false;
+    return (this.player.status === 'playing'
+    || (this.player.status === 'stopped' && this.player.playing !== null));
 }
 
 /**
@@ -143,7 +147,7 @@ NeteasePlayer.prototype.showPlaylistMenu = function() {
     // refill bullets
     self.player.list.forEach(function(item) {
         self.menu.add(item.songId, item.text);
-        if (utils.isPlaying(self.player) && self.player.playing.songId === item.songId) {
+        if (self.isPlaying() && self.player.playing.songId === item.songId) {
             self.menu.update(item.songId, c.yellow('Playing'));
         };
     });
@@ -166,7 +170,7 @@ NeteasePlayer.prototype.showSonglistMenu = function() {
     };
     for (var songId in self.songs) {
         self.menu.add(songId, self.songs[songId]);
-        if (utils.isPlaying(self.player) && self.player.playing.songId === songId) {
+        if (self.isPlaying() && self.player.playing.songId === songId) {
             self.menu.update(songId, c.yellow('Playing'));
         };
     };
@@ -240,7 +244,7 @@ NeteasePlayer.prototype.forcePlay = function(songId) {
 NeteasePlayer.prototype.play = function() {
     var self = this;
     if (typeof(self.player) === 'undefined') return;
-    if (self.player !== null && utils.isPlaying(self.player)) return;
+    if (self.player !== null && self.isPlaying()) return;
 
     // if something in the playlist, continue playing from previous one
     if (typeof(self.player.stopAt) !== 'undefined') {
@@ -251,18 +255,17 @@ NeteasePlayer.prototype.play = function() {
     };
 
 
-    self.player.on('playing', function(playingItem) {
-        var playingSongId = playingItem['songId'];
-        self.menu.update(playingSongId, c.yellow('Playing'));
-        // self.updateSongList(playingSongId, 'Playing');
-        self.setBarText('Now playing:', self.songs[playingSongId]);
+    self.player.on('playing', function(item) {
+        self.menu.update(item.songId, c.yellow('Playing'));
+        self.player.stopAt = null;
+        self.setBarText('Now playing:', item.text);
         self.menu.draw();
     });
 
     self.player.on('playend', function(item) {
-        var playedSongId = self.player.playing['songId'];
-        self.menu.update(playedSongId, '');
-        // self.updateSongList(playedSongId, '');
+        self.player.playing = null;
+        self.player.stopAt = item;
+        self.menu.update(item.songId, '');
         self.setBarText('', '');
         self.menu.draw();
     });
@@ -279,7 +282,7 @@ NeteasePlayer.prototype.play = function() {
 NeteasePlayer.prototype.playNext = function() {
     var self = this;
     // if not playing, do nothing
-    if (utils.isStopped(self.player)) return false;
+    if (!self.isPlaying()) return false;
     // why i get 'stopped' when call next() twice??
     // black maggic to tackle this
     var playing = self.player.playing,
@@ -291,6 +294,7 @@ NeteasePlayer.prototype.playNext = function() {
     }
     // play next one
     self.player.stop();
+    self.menu.update(playing.songId, '');
     self.player.status = 'playing';
     self.player.playing = next;
     self.player.stopAt = null;
@@ -303,7 +307,7 @@ NeteasePlayer.prototype.playNext = function() {
  */
 NeteasePlayer.prototype.stopPlaying = function() {
     var self = this;
-    if (utils.isStopped(self.player)) return false;
+    if (!self.isPlaying()) return false;
     // set up another object
     self.player.stopAt = self.player.playing;
     self.player.playing = null;
@@ -318,13 +322,10 @@ NeteasePlayer.prototype.stopPlaying = function() {
  * Toggle play state
  */
 NeteasePlayer.prototype.togglePlaying = function() {
-    if (utils.isPlaying(this.player)) {
+    if (this.isPlaying()) {
         return this.stopPlaying();
-    } else if(utils.isStopped(this.player)) {
-        return this.play();
     };
-    // shouldn't reach here, right?
-    return false;
+    return this.play();
 }
 
 /**

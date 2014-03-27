@@ -52,11 +52,3 @@ exports.objEmpty = function(obj) {
     for (var prop in obj) if (obj.hasOwnProperty(prop)) return false;
     return true;
 }
-
-exports.isPlaying = function(player) {
-    return ((player.status === 'playing' || player.status === 'stopped') && player.playing !== null);
-}
-
-exports.isStopped = function(player) {
-    return (player.status === 'stopped' && player.stopAt !== null);
-}
