@@ -30,12 +30,14 @@ var songlistMenuKeys = {
     'l': 'showPlaylistMenu',
     // debug
     'z': 'debugPlaylist',
-    'x': 'isInPlaylist',
 };
 
 var playlistMenuKeys = {
     'l': 'showSonglistMenu',
     'q': 'showMainMenu',
+    's': 'togglePlaying',
+    'n': 'playNext',
+    'o': 'playThis',
 };
 
 var NeteasePlayer = function() {
@@ -49,6 +51,7 @@ var NeteasePlayer = function() {
     this.player = new Player([], {
         cache: true
     });
+    this.player.stopAt = null;
 }
 
 NeteasePlayer.prototype.debugPlaylist = function() {
@@ -58,8 +61,6 @@ NeteasePlayer.prototype.debugPlaylist = function() {
     console.log(this.player.playing);
     console.log('player.stopAt');
     console.log(this.player.stopAt);
-    console.log('player.status');
-    console.log(this.player.status);
     console.log('isPlaying?');
     console.log(this.isPlaying());
 }
@@ -189,7 +190,7 @@ NeteasePlayer.prototype.showSonglistMenu = function() {
 NeteasePlayer.prototype.addToList = function(songId) {
     var self = this;;
     if (songId === 'searchSongs' || songId === 'searchArtists') return;
-    if (self.isInPlaylist(songId)) return;
+    if (self.isInPlaylist(songId) >= 0) return;
     utils.log('Adding ' + self.songs[songId] + ' ...');
     sdk.songDetail(songId, function(data) {
         if (data.length === 0) {
@@ -199,7 +200,8 @@ NeteasePlayer.prototype.addToList = function(songId) {
         var songUrl = data[0]['mp3Url'];
         self.addPlaylist(songId, self.songs[songId], songUrl);
         utils.log('Added ' + self.songs[songId] + '.');
-        if (self.player.status !== 'playing') {
+        // only play if there is only one entry in the queue
+        if (self.player.list.length === 1) {
             self.play();
         };
     });
@@ -212,7 +214,7 @@ NeteasePlayer.prototype.addAllToList = function() {
     var self = this;
     utils.log(c.cyan('Adding songs to playlist ...'));
     for (var songId in self.songs) {
-        if (!self.isInPlaylist(songId)) {
+        if (self.isInPlaylist(songId) < 0) {
             self.addToList(songId);
         };
     };
@@ -223,7 +225,7 @@ NeteasePlayer.prototype.isInPlaylist = function(songId) {
     var playlistSongIds = this.player.list.map(function(item) {
         return item.songId;
     });
-    return (playlistSongIds.indexOf(songId) >= 0);
+    return playlistSongIds.indexOf(songId);
 }
 
 /**
@@ -238,21 +240,34 @@ NeteasePlayer.prototype.forcePlay = function(songId) {
     return self.addToList(songId);
 }
 
+NeteasePlayer.prototype.playThis = function(songId) {
+    var self = this;
+    var songPos = self.isInPlaylist(songId);
+    if (songPos < 0) return;
+    self.stopPlaying();
+    var _id = self.player.list[songPos]._id;
+    self.player.play(null, self.player.list.slice(_id));
+}
+
 /**
  * The core function for playing songs
  */
 NeteasePlayer.prototype.play = function() {
     var self = this;
     if (typeof(self.player) === 'undefined') return;
-    if (self.player !== null && self.isPlaying()) return;
+    if (self.isPlaying()) return;
+    // ensure only one entry can be played
+    if (self.player.speakers.length > 1) {
+        return self.stopPlaying();
+    }
 
     // if something in the playlist, continue playing from previous one
-    if (typeof(self.player.stopAt) !== 'undefined') {
+    if (self.player.stopAt !== null) {
         self.player.play(null, self.player.list.slice(self.player.stopAt._id));
-        self.player.stopAt = null;
     } else {
         self.player.play();
     };
+    self.player.stopAt = null;
 
 
     self.player.on('playing', function(item) {
@@ -285,21 +300,11 @@ NeteasePlayer.prototype.playNext = function() {
     if (!self.isPlaying()) return false;
     // why i get 'stopped' when call next() twice??
     // black maggic to tackle this
-    var playing = self.player.playing,
-        list = self.player.list,
-        next = list[playing._id + 1];
-    if (!next) {
-        // continue playing the current song
-        return false;
-    }
-    // play next one
-    self.player.stop();
-    self.menu.update(playing.songId, '');
     self.player.status = 'playing';
-    self.player.playing = next;
-    self.player.stopAt = null;
-    self.player.play(null, list.slice(next._id));
-    self.menu.update(next.songId, c.yellow('Playing'));
+    var playingId = self.player.playing.songId;
+    if (self.player.next()) {
+        self.menu.update(playingId, '');
+    }
 }
 
 /**
@@ -311,7 +316,11 @@ NeteasePlayer.prototype.stopPlaying = function() {
     // set up another object
     self.player.stopAt = self.player.playing;
     self.player.playing = null;
-    self.player.stop();
+    // ensure there is only one entry can be played
+    for (var i = 0; i < self.player.speakers.length; i++) {
+        self.player.stop();
+        self.player.speakers.shift();
+    }
     self.player.status = 'stopped';
     self.menu.update(self.player.stopAt.songId, '');
     self.setBarText('', '');

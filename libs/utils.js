@@ -24,7 +24,7 @@ exports.playHelp = function() {
     text += c.yellow('[q] ');
     text += c.cyan('Back ');
     text += c.yellow('[s] ');
-    text += c.cyan('Stop ');
+    text += c.cyan('Play/Stop');
     text += c.yellow('[i] ');
     text += c.cyan('Add all ');
     text += c.yellow('[l] ');
@@ -41,6 +41,12 @@ exports.playlistHelp = function() {
     text += c.cyan('Search list ');
     text += c.yellow('[q] ');
     text += c.cyan('Main menu ');
+    text += c.yellow('[n] ');
+    text += c.cyan('Next ');
+    text += c.yellow('[s] ');
+    text += c.cyan('Stop/Start ');
+    text += c.yellow('[o] ');
+    text += c.cyan('Play this ');
     return text;
 }
 
