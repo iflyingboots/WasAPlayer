@@ -85,9 +85,23 @@ List.prototype.onkeypress = function(ch, key){
  * @api public
  */
 
-List.prototype.add = function(id, label){
+List.prototype.add = function(id, label) {
   if (!this.selected) this.select(id);
-  this.items.push({ id: id, label: label });
+  this.items.push({ id: id, label: label, original: label});
+};
+
+/**
+ * Update label
+ * @param  {String} id
+ * @param  {String} state
+ * @api public
+ */
+
+List.prototype.update = function(id, state) {
+  var item = this.get(id);
+  if (item === undefined) return false;
+  item.label = item.original + ' ' + state;
+  this.draw();
 };
 
 /**

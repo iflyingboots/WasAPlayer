@@ -128,21 +128,6 @@ NeteasePlayer.prototype.addPlaylist = function(songId, text, url) {
     });
 }
 
-/**
- * Update song list item
- * @param  {int} songId
- * @param  {string} state  Appdending text
- */
-NeteasePlayer.prototype.updateSongList = function(songId, state) {
-    var self = this;
-    if (self.state === 'mainMenu') return;
-    var menuItem = self.songs[songId];
-    var item = self.menu.get(songId);
-    if (!item) return;
-    item.label = menuItem + c.yellow(' ' + state);
-    self.menu.draw();
-}
-
 
 NeteasePlayer.prototype.showPlaylistMenu = function() {
     var self = this;
@@ -158,8 +143,10 @@ NeteasePlayer.prototype.showPlaylistMenu = function() {
     // refill bullets
     self.player.list.forEach(function(item) {
         self.menu.add(item.songId, item.text);
+        if (utils.isPlaying(self.player) && self.player.playing.songId === item.songId) {
+            self.menu.update(item.songId, c.yellow('Playing'));
+        };
     });
-    self.updatePlayingState();
     self.menu.draw();
 }
 
@@ -179,29 +166,16 @@ NeteasePlayer.prototype.showSonglistMenu = function() {
     };
     for (var songId in self.songs) {
         self.menu.add(songId, self.songs[songId]);
+        if (utils.isPlaying(self.player) && self.player.playing.songId === songId) {
+            self.menu.update(songId, c.yellow('Playing'));
+        };
     };
     // deal with re-enter problem
     if (self.state === 'searchSongs') {
         self.menu.start();
     };
     self.state = 'songlistMenu';
-    self.updatePlayingState();
     self.menu.draw();
-}
-
-NeteasePlayer.prototype.updatePlayingState = function() {
-    var self = this;
-    if (self.state === 'mainMenu') return;
-    // redraw the list, have to deal with flags
-    // well, bad algorithm, but node.js is fast ...
-    for (var songId in self.songs) {
-        // if the current playing songId
-        if (self.player.status === 'playing' && songId === self.player.playing['songId']) {
-            self.updateSongList(songId, 'Playing');
-        } else {
-            self.updateSongList(songId, '');
-        };
-    }
 }
 
 /**
@@ -210,7 +184,7 @@ NeteasePlayer.prototype.updatePlayingState = function() {
  */
 NeteasePlayer.prototype.addToList = function(songId) {
     var self = this;;
-    if (songId === 'searchSongs') return;
+    if (songId === 'searchSongs' || songId === 'searchArtists') return;
     if (self.isInPlaylist(songId)) return;
     utils.log('Adding ' + self.songs[songId] + ' ...');
     sdk.songDetail(songId, function(data) {
@@ -279,14 +253,16 @@ NeteasePlayer.prototype.play = function() {
 
     self.player.on('playing', function(playingItem) {
         var playingSongId = playingItem['songId'];
-        self.updateSongList(playingSongId, 'Playing');
+        self.menu.update(playingSongId, c.yellow('Playing'));
+        // self.updateSongList(playingSongId, 'Playing');
         self.setBarText('Now playing:', self.songs[playingSongId]);
         self.menu.draw();
     });
 
     self.player.on('playend', function(item) {
         var playedSongId = self.player.playing['songId'];
-        self.updateSongList(playedSongId, '');
+        self.menu.update(playedSongId, '');
+        // self.updateSongList(playedSongId, '');
         self.setBarText('', '');
         self.menu.draw();
     });
@@ -319,8 +295,7 @@ NeteasePlayer.prototype.playNext = function() {
     self.player.playing = next;
     self.player.stopAt = null;
     self.player.play(null, list.slice(next._id));
-
-    return self.updatePlayingState();
+    self.menu.update(next.songId, c.yellow('Playing'));
 }
 
 /**
@@ -334,7 +309,7 @@ NeteasePlayer.prototype.stopPlaying = function() {
     self.player.playing = null;
     self.player.stop();
     self.player.status = 'stopped';
-    self.updatePlayingState();
+    self.menu.update(self.player.stopAt.songId, '');
     self.setBarText('', '');
     return self.menu.draw();
 }
