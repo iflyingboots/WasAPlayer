@@ -4,7 +4,7 @@
  */
 
 var request = require('request'),
-    color = require('colorful');
+    c = require('colorful');
 
 exports.songDetail = function(songId, callback) {
     var url = 'http://music.163.com/api/song/detail?id=' + songId + '&ids=%5B' + songId + '%5D';
@@ -15,13 +15,36 @@ exports.songDetail = function(songId, callback) {
         }
     }, function(err, res, body) {
         if (!err && res.statusCode == 200) {
-            return callback(JSON.parse(body)['songs']);
+            return callback(JSON.parse(body).songs);
         };
         return null;
     });
 };
 
-exports.searchArtist = function(keyword, callback) {
+exports.albumDetail = function(albumId, callback) {
+    var url = 'http://music.163.com/api/album/' + albumId;
+    request.get({
+        url: url,
+        headers: {
+            Referer: 'http://music.163.com/'
+        }
+    }, function(err, res, body) {
+        if (!err && res.statusCode == 200) {
+            var result = {};
+            var jsonData = JSON.parse(body).album.songs;
+            jsonData.forEach(function(item){
+                var text = c.green(item.name);
+                text += c.grey(' [' + item.album.name + ']');
+                text += ' - ' + item.artists[0].name;
+                result[item.id] = text;
+            });
+            return callback(result);
+        };
+        return null;
+    });
+};
+
+exports.searchAlbums = function(keyword, callback) {
     var url = 'http://music.163.com/api/search/get/web';
     request.post({
         url: url,
@@ -30,14 +53,25 @@ exports.searchArtist = function(keyword, callback) {
         },
         form: {
             s: keyword,
-            type: 100,
+            type: 10,
             limit: 10,
             total: 'true',
             offset: 0,
         }
     }, function(err, res, body) {
         if (!err && res.statusCode == 200) {
-            return callback(JSON.parse(body)['result']['artists']);
+            var result = {};
+            var jsonData = JSON.parse(body).result.albums;
+            if (jsonData === undefined || jsonData.length < 1) {
+                return callback(jsonData);
+            };
+            jsonData.forEach(function(item) {
+                var text = c.green(item.name);
+                text += ' - ' + item.artist.name;
+                text += c.grey(' (' + item.size + ')');
+                result[item.id] = text;
+            });
+            return callback(result);
         };
         return null;
     });
@@ -67,15 +101,15 @@ exports.searchSongs = function(keyword, limit, callback) {
     }, function(err, res, body) {
         if (!err && res.statusCode == 200) {
             var result = {};
-            var jsonData = JSON.parse(body)['result']['songs'];
-            if (jsonData.length < 1) {
+            var jsonData = JSON.parse(body).result.songs;
+            if (jsonData === undefined || jsonData.length < 1) {
                 return cb(result);
             };
             jsonData.forEach(function(item){
-                var text = color.green(item['name']);
-                text += color.grey(' [' + item['album']['name'] + ']');
-                text += ' - ' + item['artists'][0]['name'];
-                result[item['id']] = text;
+                var text = c.green(item.name);
+                text += c.grey(' [' + item.album.name + ']');
+                text += ' - ' + item.artists[0].name;
+                result[item.id] = text;
             });
             return cb(result);
         };

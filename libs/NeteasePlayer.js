@@ -14,7 +14,7 @@ var mainMenuKeys = {
     'return': 'mainMenuDispatch',
     'o': 'mainMenuDispatch',
     's': 'searchSongs',
-    // 'a': 'searchArtists',
+    'a': 'searchAlbums',
     'l': 'showPlaylistMenu',
     'q': 'quit',
 };
@@ -32,6 +32,15 @@ var songlistMenuKeys = {
     'z': 'debugPlaylist',
 };
 
+var albumlistMenuKeys = {
+    'q': 'showMainMenu',
+    'return': 'getAlbumSongs',
+    'o': 'getAlbumSongs',
+    'i': 'addAlbumToList',
+    'l': 'showPlaylistMenu',
+    's': 'togglePlaying',
+};
+
 var playlistMenuKeys = {
     'l': 'showSonglistMenu',
     'q': 'showMainMenu',
@@ -45,15 +54,18 @@ var NeteasePlayer = function() {
     this.mainMenuKeys = mainMenuKeys;
     this.songlistMenuKeys = songlistMenuKeys;
     this.playlistMenuKeys = playlistMenuKeys;
-    this.prevState = 'showMainMenu';
+    this.albumlistMenuKeys = albumlistMenuKeys;
     this.state = '';
     this.songs = {};
+    this.albums = {};
     this.player = new Player([], {
         cache: true
     });
     this.player.stopAt = null;
 }
-
+/**
+ * Debug current states
+ */
 NeteasePlayer.prototype.debugPlaylist = function() {
     console.log('player.list');
     console.log(this.player.list);
@@ -69,10 +81,14 @@ NeteasePlayer.prototype.init = function(callback) {
     return this.showMainMenu();
 }
 
+/**
+ * Is playing?
+ * Some problems with player.status, use this method instead
+ * @return {Boolean}
+ */
 NeteasePlayer.prototype.isPlaying = function() {
     if (typeof(this.player) === 'undefined') return false;
-    return (this.player.status === 'playing'
-    || (this.player.status === 'stopped' && this.player.playing !== null));
+    return (this.player.status === 'playing' || (this.player.status === 'stopped' && this.player.playing !== null));
 }
 
 /**
@@ -107,22 +123,45 @@ NeteasePlayer.prototype.searchSongs = function() {
 }
 
 /**
+ * Seach albums
+ */
+NeteasePlayer.prototype.searchAlbums = function() {
+    var self = this;
+    self.menu.stop();
+    prompt.message = 'Please enter the ';
+    prompt.delimiter = "*".grey;
+    prompt.start();
+    prompt.get(['album'], function(err, res) {
+        if (err || res.album === '') {
+            self.menu.start();
+            return self.showMainMenu();
+        };
+        utils.log(c.green('Searching for “' + res.album + '”'));
+        sdk.searchAlbums(res.album, function(data) {
+            self.albums = data;
+            self.state = 'searchAlbums';
+            return self.showAlbumlistMenu();
+        });
+    });
+}
+
+/**
  * Process main menu events
  */
 NeteasePlayer.prototype.mainMenuDispatch = function(item) {
     var self = this;
     if (item === 'searchSongs') {
         return self.searchSongs();
-    } else if (item === 'searchArtists') {
-        //@TODO
+    } else if (item === 'searchAlbums') {
+        return self.searchAlbums();
     };
 }
 
 /**
  * Add song to playlist
  * self.player.playlist = [{songId:Int, src:String, _id:Int}, ...]
- * @param {int} songId
- * @param {string} url
+ * @param {String} songId
+ * @param {String} url
  */
 NeteasePlayer.prototype.addPlaylist = function(songId, text, url) {
     var self = this;
@@ -133,7 +172,9 @@ NeteasePlayer.prototype.addPlaylist = function(songId, text, url) {
     });
 }
 
-
+/**
+ * Display playlist
+ */
 NeteasePlayer.prototype.showPlaylistMenu = function() {
     var self = this;
     self.state = 'playlistMenu';
@@ -156,7 +197,20 @@ NeteasePlayer.prototype.showPlaylistMenu = function() {
 }
 
 /**
- * Display song list and handle events
+ * Get album songs with albumId
+ * @param  {String} albumId
+ */
+NeteasePlayer.prototype.getAlbumSongs = function(albumId) {
+    var self = this;
+    utils.log('Loading songs ...');
+    sdk.albumDetail(albumId, function(data) {
+        self.songs = data;
+        return self.showSonglistMenu();
+    });
+}
+
+/**
+ * Display song list
  */
 NeteasePlayer.prototype.showSonglistMenu = function() {
     var self = this;
@@ -183,13 +237,39 @@ NeteasePlayer.prototype.showSonglistMenu = function() {
     self.menu.draw();
 }
 
+
+/**
+ * Display album list
+ */
+NeteasePlayer.prototype.showAlbumlistMenu = function() {
+    var self = this;
+    self.menu.removeAll();
+    self.menu.setTopText(utils.albumlistHelp());
+    // empty?
+    if (utils.objEmpty(self.albums)) {
+        self.menu.add(0, c.grey('Empty'));
+        self.menu.draw();
+        self.state = 'albumlistMenu';
+        return;
+    };
+    for (var albumId in self.albums) {
+        self.menu.add(albumId, self.albums[albumId]);
+    };
+    // deal with re-enter problem
+    if (self.state === 'searchAlbums') {
+        self.menu.start();
+    };
+    self.state = 'albumlistMenu';
+    self.menu.draw();
+}
+
 /**
  * Add song to the playing list
- * @param {int} songId
+ * @param {String} songId
  */
 NeteasePlayer.prototype.addToList = function(songId) {
     var self = this;;
-    if (songId === 'searchSongs' || songId === 'searchArtists') return;
+    if (songId === 'searchSongs' || songId === 'searchAlbums') return;
     if (self.isInPlaylist(songId) >= 0) return;
     utils.log('Adding ' + self.songs[songId] + ' ...');
     sdk.songDetail(songId, function(data) {
@@ -220,7 +300,11 @@ NeteasePlayer.prototype.addAllToList = function() {
     };
 }
 
-
+/**
+ * Is the given songId in the playlist
+ * @param  {String}  songId
+ * @return {Boolean}
+ */
 NeteasePlayer.prototype.isInPlaylist = function(songId) {
     var playlistSongIds = this.player.list.map(function(item) {
         return item.songId;
@@ -230,7 +314,7 @@ NeteasePlayer.prototype.isInPlaylist = function(songId) {
 
 /**
  * Force to play the selected song, clean the queue
- * @param  {int} songId
+ * @param  {String} songId
  */
 NeteasePlayer.prototype.forcePlay = function(songId) {
     var self = this;
@@ -240,6 +324,10 @@ NeteasePlayer.prototype.forcePlay = function(songId) {
     return self.addToList(songId);
 }
 
+/**
+ * In playlist scence, play the selected song
+ * @param  {String} songId
+ */
 NeteasePlayer.prototype.playThis = function(songId) {
     var self = this;
     var songPos = self.isInPlaylist(songId);
@@ -294,6 +382,10 @@ NeteasePlayer.prototype.play = function() {
     });
 }
 
+/**
+ * Play next song, if nothing playing, play nothing
+ * Some problems in using player.next(), and this functions
+ */
 NeteasePlayer.prototype.playNext = function() {
     var self = this;
     // if not playing, do nothing
@@ -339,8 +431,8 @@ NeteasePlayer.prototype.togglePlaying = function() {
 
 /**
  * Set bar text for all menus
- * @param  {string} state Plain text
- * @param  {string} text Rendered text
+ * @param  {String} state Plain text
+ * @param  {String} text Rendered text
  */
 NeteasePlayer.prototype.setBarText = function(state, text) {
     var self = this;
@@ -366,7 +458,7 @@ NeteasePlayer.prototype.showMainMenu = function() {
     self.menu.setTopText(utils.logo());
     // self.menu.add('discover', '发现音乐');
     self.menu.add('searchSongs', '搜索歌曲 ' + c.grey('[s]'));
-    // self.menu.add('searchArtists', '搜索歌手 ' + c.grey('[a]'));
+    self.menu.add('searchAlbums', '搜索专辑 ' + c.grey('[a]'));
     self.menu.add('showPlaylistMenu', '播放列表 ' + c.grey('[l]'));
     self.menu.select('searchSongs');
     self.menu.draw();
@@ -384,6 +476,9 @@ NeteasePlayer.prototype.showMainMenu = function() {
             } else if (self.state === 'songlistMenu') {
                 if (!self.songlistMenuKeys[key.name]) return false;
                 return self[self.songlistMenuKeys[key.name]](item);
+            } else if (self.state === 'albumlistMenu') {
+                if (!self.albumlistMenuKeys[key.name]) return false;
+                return self[self.albumlistMenuKeys[key.name]](item);
             };
             return false;
         });

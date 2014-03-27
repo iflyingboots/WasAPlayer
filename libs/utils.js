@@ -15,14 +15,12 @@ exports.logo = function () {
 }
 
 exports.playHelp = function() {
-    var text = c.green('§ Search results\n');
+    var text = c.green('§ Songs\n');
     text += this.blanks();
     text += c.yellow('[o] ');
     text += c.cyan('Play this ');
     text += c.yellow('[a] ');
     text += c.cyan('Add ');
-    text += c.yellow('[q] ');
-    text += c.cyan('Back ');
     text += c.yellow('[s] ');
     text += c.cyan('Play/Stop');
     text += c.yellow('[i] ');
@@ -31,7 +29,26 @@ exports.playHelp = function() {
     text += c.cyan('Playlist ');
     text += c.yellow('[n] ')
     text += c.cyan('Next ');
+    text += c.yellow('[q] ');
+    text += c.cyan('Back ');
     return text;
+}
+
+exports.albumlistHelp = function() {
+    var text = c.green('§ Albums\n');
+    text += this.blanks();
+    text += c.yellow('[o] ');
+    text += c.cyan('Show albums ');
+    text += c.yellow('[i] ');
+    text += c.cyan('Add this albums to playlist ');
+    text += c.yellow('[l] ');
+    text += c.cyan('Playlist ');
+    text += c.yellow('[s] ');
+    text += c.cyan('Play/Stop ');
+    text += c.yellow('[q] ');
+    text += c.cyan('Back ');
+    return text;
+
 }
 
 exports.playlistHelp = function() {
@@ -39,14 +56,14 @@ exports.playlistHelp = function() {
     text += this.blanks();
     text += c.yellow('[l] ');
     text += c.cyan('Search list ');
-    text += c.yellow('[q] ');
-    text += c.cyan('Main menu ');
     text += c.yellow('[n] ');
     text += c.cyan('Next ');
     text += c.yellow('[s] ');
-    text += c.cyan('Stop/Start ');
+    text += c.cyan('Play/Stop ');
     text += c.yellow('[o] ');
     text += c.cyan('Play this ');
+    text += c.yellow('[q] ');
+    text += c.cyan('Main menu ');
     return text;
 }
 
