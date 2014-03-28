@@ -5,10 +5,11 @@
 
 var sdk = require('./sdk'),
     utils = require('./utils'),
+    termList = require('./term'),
     prompt = require('prompt'),
     Player = require('player'),
     c = require('colorful'),
-    termList = require('./term');
+    Lrc = require('lrc');
 
 var mainMenuKeys = {
     'return': 'mainMenuDispatch',
@@ -78,6 +79,10 @@ NeteasePlayer.prototype.debugPlaylist = function() {
 }
 
 NeteasePlayer.prototype.init = function(callback) {
+    // sdk.getLyric('26508242', function(data){
+    //     console.log(data);
+    //     console.log(data === null);
+    // });
     return this.showMainMenu();
 }
 
@@ -281,7 +286,7 @@ NeteasePlayer.prototype.addToList = function(songId) {
         };
         var songUrl = data[0]['mp3Url'];
         self.addPlaylist(songId, self.songs[songId], songUrl);
-        utils.log('Added ' + self.songs[songId] + '.');
+        utils.log('Added ' + self.songs[songId]);
         // only play if there is only one entry in the queue
         if (self.player.list.length === 1) {
             self.play();
@@ -333,6 +338,10 @@ NeteasePlayer.prototype.isInPlaylist = function(songId) {
  */
 NeteasePlayer.prototype.forcePlay = function(songId) {
     var self = this;
+    if (self.player.status === 'downloading') {
+        utils.log('Buffering now, try it later');
+        return false;
+    };
     utils.log('Connecting server ... ');
     self.stopPlaying();
     self.player.list = [];
@@ -379,6 +388,18 @@ NeteasePlayer.prototype.play = function() {
         self.player.stopAt = null;
         self.setBarText('Now playing:', item.text);
         self.menu.draw();
+
+        sdk.getLyric(item.songId, function(data) {
+            if (data !== null) {
+                self.setBarText('Now playing:', item.text);
+                self.menu.draw();
+                var lrc = new Lrc.Lrc(data, function(text, extra) {
+                    self.menu.setBarText(c.cyan('♪ ') + text);
+                    self.menu.draw();
+                });
+                lrc.play();
+            };
+        });
     });
 
     self.player.on('playend', function(item) {

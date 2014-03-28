@@ -128,17 +128,17 @@ exports.lyricInfo = function(songId, callback) {
         if (!err && res.statusCode == 200) {
             return callback(JSON.parse(body));
         };
-        return null;
+        return callback(null);
     });
 }
 
-exports.lyricText = function(songId, callback) {
+exports.getLyric = function(songId, callback) {
     this.lyricInfo(songId, function(data) {
         if ('lyric' in data) {
-            var pattern = /\[[^\]].*?\]/g;
-            var text = data['lyric'].replace(pattern, '');
-            return callback(text);
+            // var pattern = /\[[^\]].*?\]/g;
+            // var text = data['lyric'].replace(pattern, '');
+            return callback(data.lyric);
         };
-        return null;
+        return callback(null);
     });
 }

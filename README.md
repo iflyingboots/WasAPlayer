@@ -19,21 +19,19 @@ WARNING: VERY UNSTABLE NOW
 * player
 * term-canvas
 * keypress
+* lrc
 
 ### Run
 `$./bin/cli`
 
 
 ##TODO
-* View play list
-* Play songs by artists
-* Search artists
-* Lyric display
 * Show bit rate?
 * Download music
+* Cache
 
 
-###For windows users
+##For windows users
 The quick and offical way:
 [http://music.163.com/#/download](http://music.163.com/#/download)
 
