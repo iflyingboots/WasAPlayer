@@ -1,15 +1,15 @@
 NeteasePlayer
 =============
 
-A simple command line music player tailored for NetEase Music.
+A command line music player tailored for Netease Music.
 
 ##Screenshot
-![](http://incognita.u.qiniudn.com/NeteasePlayer_screenshot_v0.2.png)
+![](http://incognita.u.qiniudn.com/neteaseplayer_v0.1.png)
 
-##Details
-Written in `Node.js`
+##Introduction
+This project allows you to use command line interface to enjoy music from [Netease Music](http://music.163.com).
 
-WARNING: VERY UNSTABLE NOW
+Fully implemented in Node.js, NeteasePlayer is a lightweight as well as an elegant client for you. Of course, open source and free.
 
 ##Usage
 ###Required components `npm install ...`
@@ -19,6 +19,9 @@ WARNING: VERY UNSTABLE NOW
 * player
 * term-canvas
 * keypress
+
+**Npm registry to be done.**
+
 
 ### Run
 `$./bin/cli`
@@ -31,10 +34,10 @@ WARNING: VERY UNSTABLE NOW
 
 
 ##For windows users
-The quick and offical way:
+The quick and official way:
 [http://music.163.com/#/download](http://music.163.com/#/download)
 
-##Thanks
+##Acknowledgement
 Inspired by [https://github.com/turingou/douban.fm](https://github.com/turingou/douban.fm)
 
 ##License

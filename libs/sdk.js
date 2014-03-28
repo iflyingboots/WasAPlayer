@@ -4,7 +4,8 @@
  */
 
 var request = require('request'),
-    c = require('colorful');
+    c = require('colorful'),
+    utils = require('./utils');
 
 exports.songDetail = function(songId, callback) {
     var url = 'http://music.163.com/api/song/detail?id=' + songId + '&ids=%5B' + songId + '%5D';
@@ -32,10 +33,8 @@ exports.albumDetail = function(albumId, callback) {
         if (!err && res.statusCode == 200) {
             var result = {};
             var jsonData = JSON.parse(body).album.songs;
-            jsonData.forEach(function(item){
-                var text = c.green(item.name);
-                text += c.grey(' [' + item.album.name + ']');
-                text += ' - ' + item.artists[0].name;
+            jsonData.forEach(function(item) {
+                var text = utils.formatSongTitle(item);
                 result[item.id] = text;
             });
             return callback(result);
@@ -54,7 +53,7 @@ exports.searchAlbums = function(keyword, callback) {
         form: {
             s: keyword,
             type: 10,
-            limit: 10,
+            limit: 15,
             total: 'true',
             offset: 0,
         }
@@ -66,9 +65,7 @@ exports.searchAlbums = function(keyword, callback) {
                 return callback(jsonData);
             };
             jsonData.forEach(function(item) {
-                var text = c.green(item.name);
-                text += ' - ' + item.artist.name;
-                text += c.grey(' (' + item.size + ')');
+                var text = utils.formatAlbum(item);
                 result[item.id] = text;
             });
             return callback(result);
@@ -105,10 +102,8 @@ exports.searchSongs = function(keyword, limit, callback) {
             if (jsonData === undefined || jsonData.length < 1) {
                 return cb(result);
             };
-            jsonData.forEach(function(item){
-                var text = c.green(item.name);
-                text += c.grey(' [' + item.album.name + ']');
-                text += ' - ' + item.artists[0].name;
+            jsonData.forEach(function(item) {
+                var text = utils.formatSongTitle(item);
                 result[item.id] = text;
             });
             return cb(result);

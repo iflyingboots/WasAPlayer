@@ -59,6 +59,7 @@ var NeteasePlayer = function() {
     this.state = '';
     this.songs = {};
     this.albums = {};
+    this.previousScence = null;
     this.lrc = null;
     this.player = new Player([], {
         cache: true
@@ -69,14 +70,13 @@ var NeteasePlayer = function() {
  * Debug current states
  */
 NeteasePlayer.prototype.debugPlaylist = function() {
-    console.log('player.list');
-    console.log(this.player.list);
     console.log('player.playing');
     console.log(this.player.playing);
     console.log('player.stopAt');
     console.log(this.player.stopAt);
     console.log('isPlaying?');
     console.log(this.isPlaying());
+    console.log(this.lrc);
 }
 
 NeteasePlayer.prototype.init = function(callback) {
@@ -156,6 +156,8 @@ NeteasePlayer.prototype.mainMenuDispatch = function(item) {
         return self.searchSongs();
     } else if (item === 'searchAlbums') {
         return self.searchAlbums();
+    } else if (item === 'showPlaylistMenu') {
+        return self.showPlaylistMenu();
     };
 }
 
@@ -342,6 +344,10 @@ NeteasePlayer.prototype.forcePlay = function(songId) {
     utils.log('Connecting server ... ');
     self.stopPlaying();
     self.player.list = [];
+    if (self.lrc !== null) {
+        self.lrc.stop();
+        self.lrc = null;
+    };
     return self.addToList(songId);
 }
 
@@ -405,6 +411,10 @@ NeteasePlayer.prototype.play = function() {
         self.player.playing = null;
         self.player.stopAt = item;
         self.menu.update(item.songId, '');
+        if (self.lrc !== null) {
+            self.lrc.stop();
+            self.lrc = null;
+        };
         self.setBarText('', '');
         self.menu.draw();
     });
@@ -453,8 +463,10 @@ NeteasePlayer.prototype.stopPlaying = function() {
     }
     self.player.status = 'stopped';
     self.menu.update(self.player.stopAt.songId, '');
-    self.lrc.stop();
-    self.lrc = null;
+    if (self.lrc !== null) {
+        self.lrc.stop;
+        self.lrc = null;
+    };
     self.setBarText('', '');
     return self.menu.draw();
 }
