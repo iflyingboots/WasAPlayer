@@ -59,6 +59,7 @@ var NeteasePlayer = function() {
     this.state = '';
     this.songs = {};
     this.albums = {};
+    this.lrc = null;
     this.player = new Player([], {
         cache: true
     });
@@ -366,8 +367,10 @@ NeteasePlayer.prototype.play = function() {
     if (self.isPlaying()) return;
     // ensure only one entry can be played
     if (self.player.speakers.length > 1) {
-        self.stopPlaying();
-        return;
+        for (var i = 0; i < self.player.speakers.length - 1; i++) {
+            self.player.speakers.shift();
+        }
+        // self.stopPlaying();
     }
 
     // if something in the playlist, continue playing from previous one
@@ -389,11 +392,11 @@ NeteasePlayer.prototype.play = function() {
             if (data !== null) {
                 self.setBarText('Now playing:', item.text);
                 self.menu.draw();
-                var lrc = new Lrc.Lrc(data, function(text, extra) {
+                self.lrc = new Lrc.Lrc(data, function(text, extra) {
                     self.menu.setBarText(c.cyan('♪ ') + text);
                     self.menu.draw();
                 });
-                lrc.play();
+                self.lrc.play();
             };
         });
     });
@@ -426,6 +429,8 @@ NeteasePlayer.prototype.playNext = function() {
     // why i get 'stopped' when call next() twice??
     // black maggic to tackle this
     self.player.status = 'playing';
+    self.lrc.stop();
+    self.lrc = null;
     var playingId = self.player.playing.songId;
     if (self.player.next()) {
         self.menu.update(playingId, '');
@@ -448,6 +453,8 @@ NeteasePlayer.prototype.stopPlaying = function() {
     }
     self.player.status = 'stopped';
     self.menu.update(self.player.stopAt.songId, '');
+    self.lrc.stop();
+    self.lrc = null;
     self.setBarText('', '');
     return self.menu.draw();
 }
