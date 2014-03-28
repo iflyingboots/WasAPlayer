@@ -19,7 +19,6 @@ WARNING: VERY UNSTABLE NOW
 * player
 * term-canvas
 * keypress
-* lrc
 
 ### Run
 `$./bin/cli`

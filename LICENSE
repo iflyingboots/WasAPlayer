@@ -23,3 +23,6 @@ SOFTWARE.
 
 term-list:
 MIT (c) visionmedia https://github.com/visionmedia/node-term-list
+
+lrc:
+MIT (c) justan https://github.com/justan/lrc

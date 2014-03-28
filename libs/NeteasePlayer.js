@@ -6,10 +6,10 @@
 var sdk = require('./sdk'),
     utils = require('./utils'),
     termList = require('./term'),
+    Lrc = require('./lrc'),
     prompt = require('prompt'),
     Player = require('player'),
-    c = require('colorful'),
-    Lrc = require('lrc');
+    c = require('colorful');
 
 var mainMenuKeys = {
     'return': 'mainMenuDispatch',
@@ -79,10 +79,6 @@ NeteasePlayer.prototype.debugPlaylist = function() {
 }
 
 NeteasePlayer.prototype.init = function(callback) {
-    // sdk.getLyric('26508242', function(data){
-    //     console.log(data);
-    //     console.log(data === null);
-    // });
     return this.showMainMenu();
 }
 
