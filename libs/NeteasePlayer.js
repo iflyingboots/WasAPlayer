@@ -43,7 +43,7 @@ var albumlistMenuKeys = {
 };
 
 var playlistMenuKeys = {
-    'l': 'showSonglistMenu',
+    'l': 'showPreviousScene',
     'q': 'showMainMenu',
     's': 'togglePlaying',
     'n': 'playNext',
@@ -59,7 +59,7 @@ var NeteasePlayer = function() {
     this.state = '';
     this.songs = {};
     this.albums = {};
-    this.previousScence = null;
+    this.previousScence = '';
     this.lrc = null;
     this.player = new Player([], {
         cache: true
@@ -218,6 +218,7 @@ NeteasePlayer.prototype.getAlbumSongs = function(albumId) {
  */
 NeteasePlayer.prototype.showSonglistMenu = function() {
     var self = this;
+    self.previousScence = 'showSonglistMenu';
     self.menu.removeAll();
     self.menu.setTopText(utils.playHelp());
     // empty?
@@ -242,12 +243,16 @@ NeteasePlayer.prototype.showSonglistMenu = function() {
     self.menu.draw();
 }
 
+NeteasePlayer.prototype.showPreviousScene = function() {
+    this[this.previousScence]();
+}
 
 /**
  * Display album list
  */
 NeteasePlayer.prototype.showAlbumlistMenu = function() {
     var self = this;
+    self.previousScence = 'showAlbumlistMenu';
     self.menu.removeAll();
     self.menu.setTopText(utils.albumlistHelp());
     // empty?
@@ -506,6 +511,7 @@ NeteasePlayer.prototype.showMainMenu = function() {
     if (!self.menu) {
         self.menu = new termList();
     };
+    self.previousScence = 'showMainMenu';
     self.menu.removeAll();
     self.menu.setTopText(utils.logo());
     // self.menu.add('discover', '发现音乐');

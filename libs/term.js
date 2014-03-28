@@ -46,6 +46,7 @@ function List(opts) {
   this.onkeypress = this.onkeypress.bind(this);
   this.barText = '';
   this.topText= '';
+  this.isStarted = false;
 }
 
 /**
@@ -284,6 +285,7 @@ List.prototype.down = function(){
 
 List.prototype.stop = function(){
   this.items = [];
+  this.isStarted = false;
   ctx.reset();
   process.stdin.pause();
   stdin.removeListener('keypress', this.onkeypress);
@@ -296,8 +298,10 @@ List.prototype.stop = function(){
  */
 
 List.prototype.start = function(){
+  if (this.isStarted) return;
   stdin.on('keypress', this.onkeypress);
   this.draw();
+  this.isStarted = true;
   ctx.hideCursor();
   stdin.setRawMode(true);
   stdin.resume();

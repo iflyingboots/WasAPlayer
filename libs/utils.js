@@ -80,15 +80,15 @@ exports.playlistHelp = function() {
     var text = c.green('§ Playlist\n');
     text += this.blanks();
     text += c.yellow('[l] ');
-    text += c.cyan('Search list ');
+    text += c.grey('Search list ');
     text += c.yellow('[n] ');
-    text += c.cyan('Next ');
+    text += c.grey('Next ');
     text += c.yellow('[s] ');
-    text += c.cyan('Play/Stop ');
+    text += c.grey('Play/Stop ');
     text += c.yellow('[o] ');
-    text += c.cyan('Play this ');
+    text += c.grey('Play this ');
     text += c.yellow('[q] ');
-    text += c.cyan('Main menu ');
+    text += c.grey('Main menu ');
     return text;
 }
 
