@@ -26,6 +26,15 @@ $ [sudo] npm install netease-player -g \
          --disturl=http://dist.u.qiniudn.com \
          --registry=http://r.cnpmjs.org
 ````
+###Change cache directory
+
+Please go to the directory, using the following command:
+
+修改缓存文件夹，请到你选定的文件夹下运行如下命令：
+
+````
+$ netease-player home
+````
 
 ##For OS X users
 

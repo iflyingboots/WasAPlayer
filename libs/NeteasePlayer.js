@@ -88,6 +88,9 @@ NeteasePlayer.prototype.debugPlaylist = function() {
     console.log(this.lrc);
 }
 
+/**
+ * Initialize program, incl. check cache dir
+ */
 NeteasePlayer.prototype.init = function(callback) {
     var self = this;
     fs.exists(self.home, function(exist) {
@@ -100,6 +103,11 @@ NeteasePlayer.prototype.init = function(callback) {
     });
 }
 
+/**
+ * Config profile
+ * @param  {String} limit Search limit
+ * @param  {String} home  Cache directory
+ */
 NeteasePlayer.prototype.config = function(limit, home) {
     var self = this;
     var newLimit = parseInt(limit) || self.searchLimit;
@@ -115,7 +123,10 @@ NeteasePlayer.prototype.config = function(limit, home) {
         } else {
             console.log('Configuration updated');
             if (limit !== null) {
-                console.log('The search limit is ' + self.searchLimit + ' now');
+                console.log('The search limit is changed to ' + newLimit);
+            };
+            if (home !== null) {
+                console.log('The cache direcotry is changed to ' + home);
             };
         };
     });
@@ -383,10 +394,7 @@ NeteasePlayer.prototype.forcePlay = function(songId) {
     utils.log('Connecting server ... ');
     self.stopPlaying();
     self.player.list = [];
-    if (self.lrc !== null) {
-        self.lrc.stop();
-        self.lrc = null;
-    };
+    self.stopLyric();
     return self.addToList(songId);
 }
 
@@ -433,15 +441,16 @@ NeteasePlayer.prototype.play = function() {
         self.setBarText('Now playing:', item.text);
         self.menu.draw();
 
+        // Amend the latency from playing to getting lyric
+        var playStart = Date.now();
         sdk.getLyric(item.songId, function(data) {
+            var latency = Date.now() - playStart;;
             if (data !== null) {
-                self.setBarText('Now playing:', item.text);
-                self.menu.draw();
                 self.lrc = new Lrc.Lrc(data, function(text, extra) {
                     self.menu.setBarText(c.cyan('♪ ') + text);
                     self.menu.draw();
                 });
-                self.lrc.play();
+                self.lrc.play(latency);
             };
         });
     });
@@ -450,12 +459,7 @@ NeteasePlayer.prototype.play = function() {
         self.player.playing = null;
         self.player.stopAt = item;
         self.menu.update(item.songId, '');
-        if (self.lrc !== null) {
-            self.lrc.stop();
-            self.lrc = null;
-        };
-        self.setBarText('', '');
-        self.menu.draw();
+        self.stopLyric();
     });
 
     self.player.on('downloading', function(url) {
@@ -502,12 +506,18 @@ NeteasePlayer.prototype.stopPlaying = function() {
     }
     self.player.status = 'stopped';
     self.menu.update(self.player.stopAt.songId, '');
-    if (self.lrc !== null) {
-        self.lrc.stop;
-        self.lrc = null;
+    self.stopLyric();
+}
+
+/**
+ * Stop lrc
+ */
+NeteasePlayer.prototype.stopLyric = function() {
+    if (this.lrc !== null) {
+        this.lrc.stop();
     };
-    self.setBarText('', '');
-    return self.menu.draw();
+    this.setBarText('', '');
+    this.menu.draw();
 }
 
 /**
@@ -540,6 +550,7 @@ NeteasePlayer.prototype.setSearchLimit = function() {
             self.menu.start();
             return self.showMainMenu();
         };
+        self.searchLimit = res.limit;
         self.config(res.limit, null);
         self.menu.start();
         return self.showMainMenu();
