@@ -9,7 +9,10 @@ var sdk = require('./sdk'),
     Lrc = require('./lrc'),
     prompt = require('prompt'),
     Player = require('player'),
-    c = require('colorful');
+    c = require('colorful'),
+    path = require('path'),
+    mkdirp = require('mkdirp'),
+    fs = require('fs');
 
 var mainMenuKeys = {
     'return': 'mainMenuDispatch',
@@ -51,7 +54,11 @@ var playlistMenuKeys = {
 };
 
 var NeteasePlayer = function() {
-    this.isShowLrc = false;
+    this.userhome = utils.home();
+    this.rc = {};
+    this.rc.profile = path.join(this.userhome, '.netease-player.profile');
+    this.home = utils.jsonSync(this.rc.profile).home || path.join(this.userhome, 'netease-player');
+    this.searchLimit = utils.jsonSync(this.rc.profile).limit || 15;
     this.mainMenuKeys = mainMenuKeys;
     this.songlistMenuKeys = songlistMenuKeys;
     this.playlistMenuKeys = playlistMenuKeys;
@@ -62,10 +69,12 @@ var NeteasePlayer = function() {
     this.previousScence = '';
     this.lrc = null;
     this.player = new Player([], {
-        cache: true
+        cache: true,
+        downloads: this.home
     });
     this.player.stopAt = null;
 }
+
 /**
  * Debug current states
  */
@@ -80,7 +89,36 @@ NeteasePlayer.prototype.debugPlaylist = function() {
 }
 
 NeteasePlayer.prototype.init = function(callback) {
-    return this.showMainMenu();
+    var self = this;
+    fs.exists(self.home, function(exist) {
+        console.log(self.home);
+        if (exist) return self.showMainMenu();
+        mkdirp(self.home, function(err) {
+            if (err) return console.log('Creating cache directory failed: ' + err);
+            return self.showMainMenu();
+        });
+    });
+}
+
+NeteasePlayer.prototype.config = function(limit, home) {
+    var self = this;
+    var newLimit = parseInt(limit) || self.searchLimit;
+    var newHome = home || self.home;
+
+    var data = {
+        home: newHome,
+        limit: newLimit < 1 ? 1 : newLimit,
+    };
+    fs.writeFile(self.rc.profile, JSON.stringify(data), function(err) {
+        if (err) {
+            console.log('Error: ' + err);
+        } else {
+            console.log('Configuration updated');
+            if (limit !== null) {
+                console.log('The search limit is ' + self.searchLimit + ' now');
+            };
+        };
+    });
 }
 
 /**
@@ -116,7 +154,7 @@ NeteasePlayer.prototype.searchSongs = function() {
             return self.showMainMenu();
         };
         utils.log(c.green('Searching for “' + res.keywords + '”'));
-        sdk.searchSongs(res.keywords, 15, function(data) {
+        sdk.searchSongs(res.keywords, self.searchLimit, function(data) {
             self.songs = data;
             self.state = 'searchSongs';
             return self.showSonglistMenu();
@@ -139,7 +177,7 @@ NeteasePlayer.prototype.searchAlbums = function() {
             return self.showMainMenu();
         };
         utils.log(c.green('Searching for “' + res.album + '”'));
-        sdk.searchAlbums(res.album, function(data) {
+        sdk.searchAlbums(res.album, self.searchLimit, function(data) {
             self.albums = data;
             self.state = 'searchAlbums';
             return self.showAlbumlistMenu();
@@ -152,13 +190,9 @@ NeteasePlayer.prototype.searchAlbums = function() {
  */
 NeteasePlayer.prototype.mainMenuDispatch = function(item) {
     var self = this;
-    if (item === 'searchSongs') {
-        return self.searchSongs();
-    } else if (item === 'searchAlbums') {
-        return self.searchAlbums();
-    } else if (item === 'showPlaylistMenu') {
-        return self.showPlaylistMenu();
-    };
+    var menus = 'searchSongs searchAlbums showPlaylistMenu setSearchLimit setHomeDir'.split(' ');
+    if (menus.indexOf(item) < 0) return;
+    return self[menus[menus.indexOf(item)]]();
 }
 
 /**
@@ -486,6 +520,37 @@ NeteasePlayer.prototype.togglePlaying = function() {
     return this.play();
 }
 
+NeteasePlayer.prototype.setSearchLimit = function() {
+    var self = this;
+    self.menu.stop();
+    var schema = {
+        properties: {
+            limit: {
+                pattern: /^[0-9]+$/,
+                message: '“Limit” must be positive integer',
+                required: false
+            }
+        }
+    };
+    prompt.message = 'Please enter the ';
+    prompt.delimiter = "*".grey;
+    prompt.start();
+    prompt.get(schema, function(err, res) {
+        if (err || res.limit === '') {
+            self.menu.start();
+            return self.showMainMenu();
+        };
+        self.config(res.limit, null);
+        self.menu.start();
+        return self.showMainMenu();
+    });
+}
+
+NeteasePlayer.prototype.setHomeDir = function() {
+    utils.log('Please go to the directory');
+    utils.log('Enter this command: ' + c.cyan('netease-player home'));
+}
+
 /**
  * Set bar text for all menus
  * @param  {String} state Plain text
@@ -518,7 +583,9 @@ NeteasePlayer.prototype.showMainMenu = function() {
     self.menu.add('searchSongs', '搜索歌曲 ' + c.grey('[s]'));
     self.menu.add('searchAlbums', '搜索专辑 ' + c.grey('[a]'));
     self.menu.add('showPlaylistMenu', '播放列表 ' + c.grey('[l]'));
-    self.menu.select('searchSongs');
+    self.menu.add(0, '');
+    self.menu.add('setSearchLimit', c.green('[设置]') + c.grey(' 搜索数量'));
+    self.menu.add('setHomeDir', c.green('[设置]') + c.grey(' 缓存文件夹'));
     self.menu.draw();
     // only one menu policy
     // and only one key event listener

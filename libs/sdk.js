@@ -43,7 +43,7 @@ exports.albumDetail = function(albumId, callback) {
     });
 };
 
-exports.searchAlbums = function(keyword, callback) {
+exports.searchAlbums = function(keyword, limit, callback) {
     var url = 'http://music.163.com/api/search/get/web';
     request.post({
         url: url,
@@ -53,7 +53,7 @@ exports.searchAlbums = function(keyword, callback) {
         form: {
             s: keyword,
             type: 10,
-            limit: 15,
+            limit: limit,
             total: 'true',
             offset: 0,
         }
@@ -76,13 +76,6 @@ exports.searchAlbums = function(keyword, callback) {
 
 exports.searchSongs = function(keyword, limit, callback) {
     var url = 'http://music.163.com/api/search/get/web';
-    var num = 10;
-    var cb = arguments[1];
-    // limit is optional, the default value is 10
-    if (arguments.length == 3) {
-        num = arguments[1];
-        cb = arguments[2];
-    };
     request.post({
         url: url,
         headers: {
@@ -91,7 +84,7 @@ exports.searchSongs = function(keyword, limit, callback) {
         form: {
             s: keyword,
             type: 1,
-            limit: num,
+            limit: limit,
             total: 'true',
             offset: 0,
         }
@@ -100,13 +93,13 @@ exports.searchSongs = function(keyword, limit, callback) {
             var result = {};
             var jsonData = JSON.parse(body).result.songs;
             if (jsonData === undefined || jsonData.length < 1) {
-                return cb(result);
+                return callback(result);
             };
             jsonData.forEach(function(item) {
                 var text = utils.formatSongTitle(item);
                 result[item.id] = text;
             });
-            return cb(result);
+            return callback(result);
         };
         return null;
     });
