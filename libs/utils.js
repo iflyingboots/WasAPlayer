@@ -46,9 +46,8 @@ exports.blanks = function() {
 }
 
 exports.logo = function() {
-    return c.yellow('Netease Music ') +
-    c.cyan(sysInfo.version) +
-    c.grey(' http://music.163.com');
+    return c.yellow('Netease Player ') +
+    c.cyan(sysInfo.version)
 }
 
 exports.playHelp = function() {
