@@ -32,6 +32,7 @@ var Lrc = (function(){
     this.lines = [];//详细的歌词信息
     this.txts = [];
     this.isLrc = Parser.isLrc(lrc);
+    this.startTime = Date.now();
 
     this.curLine = 0;//
     this.state = 0;// 0: stop, 1: playing
@@ -51,7 +52,7 @@ var Lrc = (function(){
         line = Parser.trim(lines[i].replace(timeExp, ''));
         timeExp.lastIndex = _last;
         this.lines.push({
-            time: time[1] * 60 * 1000 + time[2] * 1000 + (time[3] || 0) * 10
+            time: time[1] * 60 * 1000 + time[2] * 1000 + (time[3] || 0) * 1
           , originLineNum: i
           , txt: line
         });

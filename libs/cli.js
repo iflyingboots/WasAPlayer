@@ -12,7 +12,7 @@ exports = module.exports = function() {
     // netease-player home
     // change cache directory
     if (command === 'home') {
-        return np.config(null, process.cwd());
+        return np.config(null, process.cwd(), null);
     };
 
     if (!command) {

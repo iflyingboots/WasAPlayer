@@ -21,6 +21,7 @@ var mainMenuKeys = {
     'a': 'searchAlbums',
     'l': 'showPlaylistMenu',
     'q': 'quit',
+    'r': 'setBitrate',
 };
 
 var songlistMenuKeys = {
@@ -57,8 +58,9 @@ var NeteasePlayer = function() {
     this.userhome = utils.home();
     this.rc = {};
     this.rc.profile = path.join(this.userhome, '.netease-player.profile');
-    this.home = utils.jsonSync(this.rc.profile).home || path.join(this.userhome, 'netease-player-dir');
+    this.home = utils.jsonSync(this.rc.profile).home || path.join(this.userhome, 'netease-player-cache');
     this.searchLimit = utils.jsonSync(this.rc.profile).limit || 15;
+    this.highRate = utils.jsonSync(this.rc.profile).highRate || false;
     this.mainMenuKeys = mainMenuKeys;
     this.songlistMenuKeys = songlistMenuKeys;
     this.playlistMenuKeys = playlistMenuKeys;
@@ -108,14 +110,16 @@ NeteasePlayer.prototype.init = function(callback) {
  * @param  {String} limit Search limit
  * @param  {String} home  Cache directory
  */
-NeteasePlayer.prototype.config = function(limit, home) {
+NeteasePlayer.prototype.config = function(limit, home, highRate) {
     var self = this;
     var newLimit = parseInt(limit) || self.searchLimit;
     var newHome = home || self.home;
+    var newRate = highRate || self.highRate;
 
     var data = {
         home: newHome,
         limit: newLimit < 1 ? 1 : newLimit,
+        highRate: newRate,
     };
     fs.writeFile(self.rc.profile, JSON.stringify(data), function(err) {
         if (err) {
@@ -155,6 +159,7 @@ NeteasePlayer.prototype.quit = function() {
  */
 NeteasePlayer.prototype.searchSongs = function() {
     var self = this;
+    self.toggleLyric();
     self.menu.stop();
     prompt.message = 'Please enter the ';
     prompt.delimiter = "*".grey;
@@ -162,12 +167,14 @@ NeteasePlayer.prototype.searchSongs = function() {
     prompt.get(['keywords'], function(err, res) {
         if (err || res.keywords === '') {
             self.menu.start();
+            self.toggleLyric();
             return self.showMainMenu();
         };
         utils.log(c.green('Searching for “' + res.keywords + '”'));
         sdk.searchSongs(res.keywords, self.searchLimit, function(data) {
             self.songs = data;
             self.state = 'searchSongs';
+            self.toggleLyric();
             return self.showSonglistMenu();
         });
     });
@@ -201,7 +208,7 @@ NeteasePlayer.prototype.searchAlbums = function() {
  */
 NeteasePlayer.prototype.mainMenuDispatch = function(item) {
     var self = this;
-    var menus = 'searchSongs searchAlbums showPlaylistMenu setSearchLimit setHomeDir'.split(' ');
+    var menus = 'searchSongs searchAlbums showPlaylistMenu setSearchLimit setHomeDir setBitrate'.split(' ');
     if (menus.indexOf(item) < 0) return;
     return self[menus[menus.indexOf(item)]]();
 }
@@ -239,10 +246,15 @@ NeteasePlayer.prototype.showPlaylistMenu = function() {
     self.player.list.forEach(function(item) {
         self.menu.add(item.songId, item.text);
         if (self.isPlaying() && self.player.playing.songId === item.songId) {
-            self.menu.update(item.songId, c.yellow('Playing'));
+            self.updatePlayingIcon(item.songId);
         };
     });
     self.menu.draw();
+}
+
+NeteasePlayer.prototype.updatePlayingIcon = function(songId) {
+    var rate = this.highRate ? ' 320Kbps' : '';
+    this.menu.update(songId, c.magenta('➤' + rate));
 }
 
 /**
@@ -277,7 +289,7 @@ NeteasePlayer.prototype.showSonglistMenu = function() {
     for (var songId in self.songs) {
         self.menu.add(songId, self.songs[songId]);
         if (self.isPlaying() && self.player.playing.songId === songId) {
-            self.menu.update(songId, c.yellow('Playing'));
+            self.updatePlayingIcon(item.songId);
         };
     };
     // deal with re-enter problem
@@ -327,13 +339,17 @@ NeteasePlayer.prototype.addToList = function(songId) {
     var self = this;;
     if (songId === 'searchSongs' || songId === 'searchAlbums') return;
     if (self.isInPlaylist(songId) >= 0) return;
+    if (songId === 0) return;
     utils.log('Adding ' + self.songs[songId] + ' ...');
     sdk.songDetail(songId, function(data) {
         if (data.length === 0) {
             utils.log('Error: adding unknown song url');
             return;
         };
-        var songUrl = data[0]['mp3Url'];
+        var songUrl = data[0].mp3Url;
+        if (self.highRate) {
+            songUrl = utils.getHighRateURL(data[0].hMusic.dfsId);
+        };
         self.addPlaylist(songId, self.songs[songId], songUrl);
         utils.log('Added ' + self.songs[songId]);
         // only play if there is only one entry in the queue
@@ -362,6 +378,7 @@ NeteasePlayer.prototype.addAllToList = function() {
 NeteasePlayer.prototype.addAlbumToList = function(albumId) {
     var self = this;
     if (albumId === 'searchSongs' || albumId === 'searchAlbums') return;
+    if (albumId === 0) return;
     utils.log(c.cyan('Loading songs ...'));
     sdk.albumDetail(albumId, function(data) {
         self.songs = data;
@@ -436,7 +453,7 @@ NeteasePlayer.prototype.play = function() {
 
 
     self.player.on('playing', function(item) {
-        self.menu.update(item.songId, c.yellow('Playing'));
+        self.updatePlayingIcon(item.songId);
         self.player.stopAt = null;
         self.setBarText('Now playing:', item.text);
         self.menu.draw();
@@ -445,13 +462,13 @@ NeteasePlayer.prototype.play = function() {
         var playStart = Date.now();
         sdk.getLyric(item.songId, function(data) {
             var latency = Date.now() - playStart;;
-            if (data !== null) {
-                self.lrc = new Lrc.Lrc(data, function(text, extra) {
-                    self.menu.setBarText(c.cyan('♪ ') + text);
-                    self.menu.draw();
-                });
-                self.lrc.play(latency);
-            };
+            if (!data) return;
+            self.stopLyric();
+            self.lrc = new Lrc.Lrc(data, function(text, extra) {
+                self.menu.setBarText(c.cyan('♪ ') + text);
+                self.menu.draw();
+            });
+            self.lrc.play(latency);
         });
     });
 
@@ -477,16 +494,20 @@ NeteasePlayer.prototype.play = function() {
  */
 NeteasePlayer.prototype.playNext = function() {
     var self = this;
+    var playing = self.player.playing;
     // if not playing, do nothing
     if (!self.isPlaying()) return false;
+    // if no track available, do nothing
+    if (self.player.list.indexOf(playing) === self.player.list.length - 1) {
+        return false;
+    }
     // why i get 'stopped' when call next() twice??
     // black maggic to tackle this
-    self.player.status = 'playing';
-    self.lrc.stop();
-    self.lrc = null;
     var playingId = self.player.playing.songId;
     if (self.player.next()) {
         self.menu.update(playingId, '');
+        self.player.status = 'playing';
+        self.stopLyric();
     }
 }
 
@@ -517,7 +538,26 @@ NeteasePlayer.prototype.stopLyric = function() {
         this.lrc.stop();
     };
     this.setBarText('', '');
-    this.menu.draw();
+    if (this.menu.isStarted) {
+        this.menu.draw();
+    };
+}
+
+
+/**
+ * Show or dismiss lyric
+ */
+NeteasePlayer.prototype.toggleLyric = function() {
+    if (!this.lrc) return;
+    if (this.lrc.state) {
+        // this.lrc.stopAt = Date.now();
+        this.lrc.stop();
+    } else {
+        // var offset = this.lrc.lines[this.lrc.curLine].time;
+        var offset = Date.now() - this.lrc.startTime;
+        // offset += Date.now() - this.lrc.stopAt;
+        this.lrc.play(offset);
+    };
 }
 
 /**
@@ -551,7 +591,7 @@ NeteasePlayer.prototype.setSearchLimit = function() {
             return self.showMainMenu();
         };
         self.searchLimit = res.limit;
-        self.config(res.limit, null);
+        self.config(res.limit, null, null);
         self.menu.start();
         return self.showMainMenu();
     });
@@ -560,6 +600,14 @@ NeteasePlayer.prototype.setSearchLimit = function() {
 NeteasePlayer.prototype.setHomeDir = function() {
     utils.log('Please go to the directory');
     utils.log('Enter this command: ' + c.cyan('netease-player home'));
+}
+
+NeteasePlayer.prototype.setBitrate = function() {
+    this.highRate = !this.highRate;
+    var rate = this.highRate ? c.grey('切换到 160Kbps [r]') : c.grey('切换到 320Kbps [r]');
+    this.config(null, null, this.highRate);
+    this.showLogo();
+    this.menu.update('setBitrate', rate);
 }
 
 /**
@@ -579,6 +627,11 @@ NeteasePlayer.prototype.setBarText = function(state, text) {
     self.menu.setBarText(renderedText + text);
 }
 
+NeteasePlayer.prototype.showLogo = function() {
+    var showRate = this.highRate ? ' 320Kbps' : ' 160Kbps';
+    this.menu.setTopText(utils.logo() + c.magenta(showRate));
+}
+
 /**
  * Create main menu
  */
@@ -589,12 +642,15 @@ NeteasePlayer.prototype.showMainMenu = function() {
     };
     self.previousScence = 'showMainMenu';
     self.menu.removeAll();
-    self.menu.setTopText(utils.logo());
+    self.showLogo();
     // self.menu.add('discover', '发现音乐');
     self.menu.add('searchSongs', '搜索歌曲 ' + c.grey('[s]'));
     self.menu.add('searchAlbums', '搜索专辑 ' + c.grey('[a]'));
     self.menu.add('showPlaylistMenu', '播放列表 ' + c.grey('[l]'));
     self.menu.add(0, '');
+    self.menu.add('setBitrate', c.green('[音质]'));
+    var rate = self.highRate ? c.grey('切换到 160Kbps [r]') : c.grey('切换到 320Kbps [r]');
+    self.menu.update('setBitrate', rate);
     self.menu.add('setSearchLimit', c.green('[设置]') + c.grey(' 搜索数量'));
     self.menu.add('setHomeDir', c.green('[设置]') + c.grey(' 缓存文件夹'));
     self.menu.draw();

@@ -4,12 +4,13 @@ NeteasePlayer [![NPM version](https://badge.fury.io/js/netease-player.png)](http
 A command line music player tailored for Netease Music.
 
 ##Screenshot
-![](http://incognita.u.qiniudn.com/neteaseplayer_v0.1.png)
+![](http://incognita.u.qiniudn.com/NeteasePlayer-v0.0.4.png)
 
 ##Introduction
 This project allows you to use command line interface to enjoy music from [Netease Music](http://music.163.com).
 
 Fully implemented in Node.js, NeteasePlayer is a lightweight as well as an elegant client for you. Of course, open source and free.
+
 
 ##Usage
 
