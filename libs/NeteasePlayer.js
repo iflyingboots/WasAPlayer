@@ -159,7 +159,7 @@ NeteasePlayer.prototype.quit = function() {
  */
 NeteasePlayer.prototype.searchSongs = function() {
     var self = this;
-    self.toggleLyric();
+    self.stopLyric();
     self.menu.stop();
     prompt.message = 'Please enter the ';
     prompt.delimiter = "*".grey;
@@ -167,14 +167,14 @@ NeteasePlayer.prototype.searchSongs = function() {
     prompt.get(['keywords'], function(err, res) {
         if (err || res.keywords === '') {
             self.menu.start();
-            self.toggleLyric();
+            self.resumeLyric();
             return self.showMainMenu();
         };
         utils.log(c.green('Searching for “' + res.keywords + '”'));
         sdk.searchSongs(res.keywords, self.searchLimit, function(data) {
             self.songs = data;
             self.state = 'searchSongs';
-            self.toggleLyric();
+            self.resumeLyric();
             return self.showSonglistMenu();
         });
     });
@@ -545,19 +545,12 @@ NeteasePlayer.prototype.stopLyric = function() {
 
 
 /**
- * Show or dismiss lyric
+ * Continue showing lyric
  */
-NeteasePlayer.prototype.toggleLyric = function() {
+NeteasePlayer.prototype.resumeLyric = function() {
     if (!this.lrc) return;
-    if (this.lrc.state) {
-        // this.lrc.stopAt = Date.now();
-        this.lrc.stop();
-    } else {
-        // var offset = this.lrc.lines[this.lrc.curLine].time;
-        var offset = Date.now() - this.lrc.startTime;
-        // offset += Date.now() - this.lrc.stopAt;
-        this.lrc.play(offset);
-    };
+    var offset = Date.now() - this.lrc.startTime;
+    this.lrc.state && this.lrc.play(offset);
 }
 
 /**
