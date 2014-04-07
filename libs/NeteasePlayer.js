@@ -289,7 +289,7 @@ NeteasePlayer.prototype.showSonglistMenu = function() {
     for (var songId in self.songs) {
         self.menu.add(songId, self.songs[songId]);
         if (self.isPlaying() && self.player.playing.songId === songId) {
-            self.updatePlayingIcon(item.songId);
+            self.updatePlayingIcon(songId);
         };
     };
     // deal with re-enter problem
