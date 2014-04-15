@@ -42,6 +42,16 @@ exports.formatAlbum = function(item) {
     return text;
 }
 
+exports.formatArtist = function(item) {
+    var text = c.green(item.name);
+    if (item.alias.length > 0) {
+        text += c.grey(' (');
+        text += c.grey(item.alias.join('/'));
+        text += c.grey(')');
+    };
+    return text;
+}
+
 exports.getHighRateURL = function(dfsId) {
     var byte1 = '3go8&$8*3*3h0k(2)2';
     var byte1Length = byte1.length;
@@ -94,13 +104,25 @@ exports.playHelp = function() {
     return text;
 }
 
+exports.artistlistHelp = function() {
+    var text = c.green('§ Arist\n') +
+        this.blanks() +
+        c.yellow('[o] ') +
+        c.grey('Show albums ') +
+        c.yellow('[l] ') +
+        c.grey('Playlist ') +
+        c.yellow('[q] ') +
+        c.grey('Back ');
+    return text
+}
+
 exports.albumlistHelp = function() {
     var text = c.green('§ Albums\n') +
         this.blanks() +
         c.yellow('[o] ') +
-        c.grey('Show albums ') +
+        c.grey('Show tracks ') +
         c.yellow('[i] ') +
-        c.grey('Add this albums to playlist ') +
+        c.grey('Add this album to playlist ') +
         c.yellow('[l] ') +
         c.grey('Playlist ') +
         c.yellow('[s] ') +

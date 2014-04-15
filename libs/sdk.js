@@ -22,6 +22,28 @@ exports.songDetail = function(songId, callback) {
     });
 };
 
+exports.artistDetail = function(artistId, limit, callback) {
+    var url = 'http://music.163.com/api/artist/albums/' + artistId + '?limit=' + limit;
+    request.get({
+        url: url,
+        headers: {
+            Referer: 'http://music.163.com/'
+        }
+    }, function(err, res, body) {
+        if (!err && res.statusCode == 200) {
+            var result = {};
+            var jsonData = JSON.parse(body).hotAlbums;
+            jsonData.forEach(function(item) {
+                var text = utils.formatAlbum(item);
+                result[item.id] = text;
+            });
+            return callback(result);
+        };
+        return null;
+    });
+
+};
+
 exports.albumDetail = function(albumId, callback) {
     var url = 'http://music.163.com/api/album/' + albumId;
     request.get({
@@ -72,6 +94,39 @@ exports.searchAlbums = function(keyword, limit, callback) {
         };
         return null;
     });
+}
+
+
+exports.searchArtists = function(keyword, limit, callback) {
+    var url = 'http://music.163.com/api/search/get/web';
+    request.post({
+        url: url,
+        headers: {
+            Referer: 'http://music.163.com/'
+        },
+        form: {
+            s: keyword,
+            type: 100,
+            limit: limit,
+            total: 'true',
+            offset: 0,
+        }
+    }, function(err, res, body) {
+        if (!err && res.statusCode == 200) {
+            var result = {};
+            var jsonData = JSON.parse(body).result.artists;
+            if (jsonData === undefined || jsonData.length < 1) {
+                return callback(jsonData);
+            };
+            jsonData.forEach(function(item) {
+                var text = utils.formatArtist(item);
+                result[item.id] = text;
+            });
+            return callback(result);
+        };
+        return null;
+    });
+
 }
 
 exports.searchSongs = function(keyword, limit, callback) {

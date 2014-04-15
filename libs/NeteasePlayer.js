@@ -19,13 +19,14 @@ var mainMenuKeys = {
     'o': 'mainMenuDispatch',
     's': 'searchSongs',
     'a': 'searchAlbums',
+    't': 'searchArtists',
     'l': 'showPlaylistMenu',
     'q': 'quit',
     'r': 'setBitrate',
 };
 
 var songlistMenuKeys = {
-    'q': 'showMainMenu',
+    'q': 'showUpperScence',
     'return': 'forcePlay',
     'o': 'forcePlay',
     'a': 'addToList',
@@ -38,12 +39,18 @@ var songlistMenuKeys = {
 };
 
 var albumlistMenuKeys = {
-    'q': 'showMainMenu',
+    'q': 'showUpperScence',
     'return': 'getAlbumSongs',
     'o': 'getAlbumSongs',
     'i': 'addAlbumToList',
     'l': 'showPlaylistMenu',
     's': 'togglePlaying',
+};
+
+var artistlistMenuKeys = {
+    'o': 'getArtistAlbums',
+    'q': 'showMainMenu',
+    'l': 'showPlaylistMenu',
 };
 
 var playlistMenuKeys = {
@@ -65,10 +72,13 @@ var NeteasePlayer = function() {
     this.songlistMenuKeys = songlistMenuKeys;
     this.playlistMenuKeys = playlistMenuKeys;
     this.albumlistMenuKeys = albumlistMenuKeys;
+    this.artistlistMenuKeys = artistlistMenuKeys;
     this.state = '';
     this.songs = {};
     this.albums = {};
+    this.artists = {};
     this.previousScence = '';
+    this.upperScence = '';
     this.lrc = null;
     this.player = new Player([], {
         cache: true,
@@ -203,12 +213,36 @@ NeteasePlayer.prototype.searchAlbums = function() {
     });
 }
 
+
+/**
+ * Search artists
+ */
+NeteasePlayer.prototype.searchArtists = function() {
+    var self = this;
+    self.menu.stop();
+    prompt.message = 'Please enter the ';
+    prompt.delimiter = "*".grey;
+    prompt.start();
+    prompt.get(['artist'], function(err, res) {
+        if (err || res.artist === '') {
+            self.menu.start();
+            return self.showMainMenu();
+        };
+        utils.log(c.green('Searching for “' + res.artist + '”'));
+        sdk.searchArtists(res.artist, self.searchLimit, function(data) {
+            self.artists = data;
+            self.state = 'searchArtists';
+            return self.showArtistlistMenu();
+        });
+    });
+}
+
 /**
  * Process main menu events
  */
 NeteasePlayer.prototype.mainMenuDispatch = function(item) {
     var self = this;
-    var menus = 'searchSongs searchAlbums showPlaylistMenu setSearchLimit setHomeDir setBitrate'.split(' ');
+    var menus = 'searchSongs searchAlbums searchArtists showPlaylistMenu setSearchLimit setHomeDir setBitrate'.split(' ');
     if (menus.indexOf(item) < 0) return;
     return self[menus[menus.indexOf(item)]]();
 }
@@ -270,12 +304,83 @@ NeteasePlayer.prototype.getAlbumSongs = function(albumId) {
     });
 }
 
+NeteasePlayer.prototype.getArtistAlbums = function(artistId) {
+    var self = this;
+    utils.log('Loading albums ...');
+    sdk.artistDetail(artistId, self.searchLimit, function(data) {
+        self.albums = data;
+        return self.showAlbumlistMenu();
+    });
+}
+
+NeteasePlayer.prototype.showUpperScence = function() {
+    this.upperScence ? this[this.upperScence]() : this.showMainMenu();
+}
+
+NeteasePlayer.prototype.showPreviousScene = function() {
+    this[this.previousScence]();
+}
+
+NeteasePlayer.prototype.showArtistlistMenu = function() {
+    var self = this;
+    self.previousScence = 'showArtistlistMenu';
+    self.menu.removeAll();
+    self.menu.setTopText(utils.artistlistHelp());
+    // empty?
+    if (utils.objEmpty(self.artists)) {
+        self.menu.add(0, c.grey('Empty'));
+        self.state = 'artistlistMenu';
+        self.menu.draw();
+        self.menu.start();
+        return;
+    };
+    for (var aritstId in self.artists) {
+        self.menu.add(aritstId, self.artists[aritstId]);
+    };
+    // deal with re-enter problem
+    if (self.state === 'searchArtists') {
+        self.menu.start();
+    };
+    self.state = 'artistlistMenu';
+    self.menu.draw();
+}
+
+/**
+ * Display album list
+ */
+NeteasePlayer.prototype.showAlbumlistMenu = function() {
+    var self = this;
+    self.previousScence = 'showAlbumlistMenu';
+    self.upperScence = self.state === 'artistlistMenu' || self.artists  ? 'showArtistlistMenu' : '';
+    self.menu.removeAll();
+    self.menu.setTopText(utils.albumlistHelp());
+    // empty?
+    if (utils.objEmpty(self.albums)) {
+        self.menu.add(0, c.grey('Empty'));
+        self.state = 'albumlistMenu';
+        self.menu.draw();
+        self.menu.start();
+        return;
+    };
+    for (var albumId in self.albums) {
+        self.menu.add(albumId, self.albums[albumId]);
+    };
+    // deal with re-enter problem
+    if (self.state === 'searchAlbums') {
+        self.menu.start();
+    };
+    self.state = 'albumlistMenu';
+    self.menu.draw();
+}
+
+
 /**
  * Display song list
  */
 NeteasePlayer.prototype.showSonglistMenu = function() {
     var self = this;
     self.previousScence = 'showSonglistMenu';
+    self.upperScence = self.state === 'albumlistMenu' ? 'showAlbumlistMenu' : '';
     self.menu.removeAll();
     self.menu.setTopText(utils.playHelp());
     // empty?
@@ -297,37 +402,6 @@ NeteasePlayer.prototype.showSonglistMenu = function() {
         self.menu.start();
     };
     self.state = 'songlistMenu';
-    self.menu.draw();
-}
-
-NeteasePlayer.prototype.showPreviousScene = function() {
-    this[this.previousScence]();
-}
-
-/**
- * Display album list
- */
-NeteasePlayer.prototype.showAlbumlistMenu = function() {
-    var self = this;
-    self.previousScence = 'showAlbumlistMenu';
-    self.menu.removeAll();
-    self.menu.setTopText(utils.albumlistHelp());
-    // empty?
-    if (utils.objEmpty(self.albums)) {
-        self.menu.add(0, c.grey('Empty'));
-        self.state = 'albumlistMenu';
-        self.menu.draw();
-        self.menu.start();
-        return;
-    };
-    for (var albumId in self.albums) {
-        self.menu.add(albumId, self.albums[albumId]);
-    };
-    // deal with re-enter problem
-    if (self.state === 'searchAlbums') {
-        self.menu.start();
-    };
-    self.state = 'albumlistMenu';
     self.menu.draw();
 }
 
@@ -636,9 +710,12 @@ NeteasePlayer.prototype.showMainMenu = function() {
     self.previousScence = 'showMainMenu';
     self.menu.removeAll();
     self.showLogo();
+    // reset artists when back to main menu
+    self.artists = null;
     // self.menu.add('discover', '发现音乐');
-    self.menu.add('searchSongs', '搜索歌曲 ' + c.grey('[s]'));
-    self.menu.add('searchAlbums', '搜索专辑 ' + c.grey('[a]'));
+    self.menu.add('searchSongs', '歌曲 ' + c.grey('[s]'));
+    self.menu.add('searchAlbums', '专辑 ' + c.grey('[a]'));
+    self.menu.add('searchArtists', '歌手 ' + c.grey('[t]'));
     self.menu.add('showPlaylistMenu', '播放列表 ' + c.grey('[l]'));
     self.menu.add(0, '');
     self.menu.add('setBitrate', c.green('[音质]'));
@@ -655,15 +732,22 @@ NeteasePlayer.prototype.showMainMenu = function() {
             if (self.state === 'mainMenu') {
                 if (!self.mainMenuKeys[key.name]) return false;
                 return self[self.mainMenuKeys[key.name]](item);
-            } else if (self.state === 'playlistMenu') {
+            };
+            if (self.state === 'playlistMenu') {
                 if (!self.playlistMenuKeys[key.name]) return false;
                 return self[self.playlistMenuKeys[key.name]](item);
-            } else if (self.state === 'songlistMenu') {
+            };
+            if (self.state === 'songlistMenu') {
                 if (!self.songlistMenuKeys[key.name]) return false;
                 return self[self.songlistMenuKeys[key.name]](item);
-            } else if (self.state === 'albumlistMenu') {
+            };
+            if (self.state === 'albumlistMenu') {
                 if (!self.albumlistMenuKeys[key.name]) return false;
                 return self[self.albumlistMenuKeys[key.name]](item);
+            };
+            if (self.state === 'artistlistMenu') {
+                if (!self.artistlistMenuKeys[key.name]) return false;
+                return self[self.artistlistMenuKeys[key.name]](item);
             };
             return false;
         });
