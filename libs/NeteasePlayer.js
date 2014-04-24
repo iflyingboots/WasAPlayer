@@ -252,13 +252,15 @@ NeteasePlayer.prototype.mainMenuDispatch = function(item) {
  * self.player.playlist = [{songId:Int, src:String, _id:Int}, ...]
  * @param {String} songId
  * @param {String} url
+ * @param {String} bitrate
  */
-NeteasePlayer.prototype.addPlaylist = function(songId, text, url) {
+NeteasePlayer.prototype.addPlaylist = function(songId, text, url, bitrate) {
     var self = this;
     return self.player.add({
         songId: songId,
         text: text,
         src: url,
+        bitrate: bitrate,
     });
 }
 
@@ -287,8 +289,13 @@ NeteasePlayer.prototype.showPlaylistMenu = function() {
 }
 
 NeteasePlayer.prototype.updatePlayingIcon = function(songId) {
-    var rate = this.highRate ? ' 320Kbps' : '';
-    this.menu.update(songId, c.magenta('➤' + rate));
+    var rate = '';
+    for (var i = 0; i < this.player.list.length; i++) {
+        if (this.player.list[i].songId === songId) {
+            rate = this.player.list[i].bitrate;
+        };
+    };
+    this.menu.update(songId, c.magenta('➤ ' + rate));
 }
 
 /**
@@ -421,10 +428,17 @@ NeteasePlayer.prototype.addToList = function(songId) {
             return;
         };
         var songUrl = data[0].mp3Url;
+        var bitrate = '160Kbps';
         if (self.highRate) {
-            songUrl = utils.getHighRateURL(data[0].hMusic.dfsId);
+            try {
+                var highDfsId = data[0].hMusic.dfsId;
+                songUrl = utils.getHighRateURL(highDfsId);
+                bitrate = '320Kbps';
+            } catch(e) {
+                utils.log('Error: no high bitrate track available');
+            }
         };
-        self.addPlaylist(songId, self.songs[songId], songUrl);
+        self.addPlaylist(songId, self.songs[songId], songUrl, bitrate);
         utils.log('Added ' + self.songs[songId]);
         // only play if there is only one entry in the queue
         if (self.player.list.length === 1) {
@@ -671,7 +685,7 @@ NeteasePlayer.prototype.setHomeDir = function() {
 
 NeteasePlayer.prototype.setBitrate = function() {
     this.highRate = !this.highRate;
-    var rate = this.highRate ? c.grey('切换到 160Kbps [r]') : c.grey('切换到 320Kbps [r]');
+    var rate = this.highRate ? c.grey('切换到 SD（普通音质） [r]') : c.grey('切换到 HD（高音质） [r]');
     this.config(null, null, this.highRate);
     this.showLogo();
     this.menu.update('setBitrate', rate);
@@ -695,7 +709,7 @@ NeteasePlayer.prototype.setBarText = function(state, text) {
 }
 
 NeteasePlayer.prototype.showLogo = function() {
-    var showRate = this.highRate ? ' 320Kbps' : ' 160Kbps';
+    var showRate = this.highRate ? ' HD' : ' SD';
     this.menu.setTopText(utils.logo() + c.magenta(showRate));
 }
 
@@ -719,7 +733,7 @@ NeteasePlayer.prototype.showMainMenu = function() {
     self.menu.add('showPlaylistMenu', '播放列表 ' + c.grey('[l]'));
     self.menu.add(0, '');
     self.menu.add('setBitrate', c.green('[音质]'));
-    var rate = self.highRate ? c.grey('切换到 160Kbps [r]') : c.grey('切换到 320Kbps [r]');
+    var rate = self.highRate ? c.grey('切换到 SD（普通音质） [r]') : c.grey('切换到 HD（高音质） [r]');
     self.menu.update('setBitrate', rate);
     self.menu.add('setSearchLimit', c.green('[设置]') + c.grey(' 搜索数量'));
     self.menu.add('setHomeDir', c.green('[设置]') + c.grey(' 缓存文件夹'));
