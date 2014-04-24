@@ -427,13 +427,14 @@ NeteasePlayer.prototype.addToList = function(songId) {
             utils.log('Error: adding unknown song url');
             return;
         };
-        var songUrl = data[0].mp3Url;
-        var bitrate = '160Kbps';
+        var songData = data[0];
+        var songUrl = utils.getTrackURL(songData.mMusic.dfsId) || songData.mp3Url;
+        var bitrate = songData.mMusic.bitrate / 1000 + 'Kbps' || '';
         if (self.highRate) {
             try {
-                var highDfsId = data[0].hMusic.dfsId;
-                songUrl = utils.getHighRateURL(highDfsId);
-                bitrate = '320Kbps';
+                var highDfsId = songData.hMusic.dfsId;
+                songUrl = utils.getTrackURL(highDfsId);
+                bitrate = songData.hMusic.bitrate / 1000 + 'Kbps';
             } catch(e) {
                 utils.log('Error: no high bitrate track available');
             }

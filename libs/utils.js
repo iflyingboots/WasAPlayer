@@ -52,7 +52,7 @@ exports.formatArtist = function(item) {
     return text;
 }
 
-exports.getHighRateURL = function(dfsId) {
+exports.getTrackURL = function(dfsId) {
     var byte1 = '3go8&$8*3*3h0k(2)2';
     var byte1Length = byte1.length;
     var byte2 = dfsId + '';
