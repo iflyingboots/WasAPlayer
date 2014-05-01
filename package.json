@@ -1,6 +1,6 @@
 {
     "name": "netease-player",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "description": "A command line music player tailored for Netease Music.",
     "main": "index.js",
     "author": "Xin Wang <i@wangx.in>",
@@ -23,7 +23,7 @@
         "url": "https://github.com/sutar/NeteasePlayer/issues"
     },
     "dependencies": {
-        "player": "~0.1.4",
+        "player": "0.1.5",
         "prompt": "~0.2.12",
         "mkdirp": "~0.3.5",
         "request": "2.34.0",
