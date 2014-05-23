@@ -59,6 +59,8 @@ var playlistMenuKeys = {
     's': 'togglePlaying',
     'n': 'playNext',
     'o': 'playThis',
+    'j': 'savePlayList',
+    'k': 'loadPlayList'
 };
 
 var NeteasePlayer = function() {
@@ -598,6 +600,14 @@ NeteasePlayer.prototype.playNext = function() {
         self.player.status = 'playing';
         self.stopLyric();
     }
+}
+
+NeteasePlayer.prototype.savePlayList = function() {
+  console.log(this.player.list);
+}
+
+NeteasePlayer.prototype.loadPlayList = function() {
+  console.log(this.player.list);
 }
 
 /**

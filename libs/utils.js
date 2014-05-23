@@ -143,6 +143,10 @@ exports.playlistHelp = function() {
         c.grey('Play/Stop ') +
         c.yellow('[o] ') +
         c.grey('Play this ') +
+        c.yellow('[j] ') +
+        c.grey('Save Play List ') +
+        c.yellow('[k] ') +
+        c.grey('Load Play List ') +
         c.yellow('[q] ') +
         c.grey('Main menu ');
     return text;
