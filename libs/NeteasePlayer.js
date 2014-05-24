@@ -603,11 +603,24 @@ NeteasePlayer.prototype.playNext = function() {
 }
 
 NeteasePlayer.prototype.savePlayList = function() {
-  console.log(this.player.list);
+  var fs = require('fs');
+  fs.writeFile(this.home + '/play_list.json', JSON.stringify(this.player.list) , function() {
+    util.log('Play list Saved.');
+  });
 }
 
 NeteasePlayer.prototype.loadPlayList = function() {
-  console.log(this.player.list);
+  this.player.list = require(this.home + '/play_list.json');
+  // for (var i = 0; i < list.length; i++) {
+  //   var song = list[i];
+  //   this.player.add({
+  //       songId: song.songId,
+  //       text: song.text,
+  //       src: song.url,
+  //       bitrate: song.bitrate,
+  //   });
+  // }
+  this.showPlaylistMenu();
 }
 
 /**
