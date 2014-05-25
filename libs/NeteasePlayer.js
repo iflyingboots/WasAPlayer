@@ -59,6 +59,8 @@ var playlistMenuKeys = {
     's': 'togglePlaying',
     'n': 'playNext',
     'o': 'playThis',
+    'j': 'savePlayList',
+    'k': 'loadPlayList'
 };
 
 var NeteasePlayer = function() {
@@ -598,6 +600,22 @@ NeteasePlayer.prototype.playNext = function() {
         self.player.status = 'playing';
         self.stopLyric();
     }
+}
+
+NeteasePlayer.prototype.savePlayList = function() {
+  var fs = require('fs');
+  fs.writeFile(this.home + '/play_list.json', JSON.stringify(this.player.list) , function() {
+    utils.log('Play list Saved.');
+  });
+}
+
+NeteasePlayer.prototype.loadPlayList = function() {
+  try {
+    this.player.list = require(this.home + '/play_list.json');
+    this.showPlaylistMenu();
+  } catch(e) {
+    utils.log('No saved play list.')
+  }
 }
 
 /**
