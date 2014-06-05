@@ -6,8 +6,7 @@
     "author": "Xin Wang <i@wangx.in>",
     "license": "MIT",
     "bin": {
-        "core.netease-player": "./bin/cli",
-        "netease-player": "./bin/start.sh"
+        "netease-player": "./bin/cli"
     },
     "repository": {
         "type": "git",
