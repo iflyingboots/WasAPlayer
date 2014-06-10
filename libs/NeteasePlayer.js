@@ -516,8 +516,9 @@ NeteasePlayer.prototype.playThis = function(songId) {
     var songPos = self.isInPlaylist(songId);
     if (songPos < 0) return;
     self.stopPlaying();
-    var _id = self.player.list[songPos]._id;
-    self.player.play(null, self.player.list.slice(_id));
+    var song = self.player.list[songPos];
+    self.player.stopAt = song;
+    self.play();
 }
 
 /**
@@ -529,8 +530,7 @@ NeteasePlayer.prototype.play = function() {
     if (self.isPlaying()) return;
     // if something in the playlist, continue playing from previous one
     if (self.player.stopAt !== null) {
-        var current = self.player.history[self.player.history.length - 1];
-        self.player.play(null, current._id);
+        self.player.play(null, self.player.list.slice(self.player.stopAt._id));
     } else {
         self.player.play();
     };
@@ -598,7 +598,7 @@ NeteasePlayer.prototype.playNext = function() {
 NeteasePlayer.prototype.savePlayList = function() {
   var fs = require('fs');
   fs.writeFile(this.home + '/play_list.json', JSON.stringify(this.player.list) , function() {
-    utils.log('Play list Saved.');
+    utils.log('Playlist saved');
   });
 }
 
@@ -607,7 +607,7 @@ NeteasePlayer.prototype.loadPlayList = function() {
     this.player.list = require(this.home + '/play_list.json');
     this.showPlaylistMenu();
   } catch(e) {
-    utils.log('No saved play list.')
+    utils.log('No saved playlist')
   }
 }
 
@@ -621,8 +621,7 @@ NeteasePlayer.prototype.stopPlaying = function() {
     self.player.stop();
     self.player.stopAt = self.player.playing;
     self.player.playing = null;
-    self.player.status =
-    // ensure there is only one entry can be played
+    self.player.status = 'stopped';
     self.menu.update(self.player.stopAt.songId, '');
     self.stopLyric();
 }
