@@ -23,7 +23,7 @@
         "url": "https://github.com/sutar/NeteasePlayer/issues"
     },
     "dependencies": {
-        "player": "0.1.5",
+        "player": "0.1.8",
         "prompt": "~0.2.12",
         "mkdirp": "~0.3.5",
         "request": "2.34.0",
