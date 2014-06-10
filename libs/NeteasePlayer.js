@@ -59,8 +59,8 @@ var playlistMenuKeys = {
     's': 'togglePlaying',
     'n': 'playNext',
     'o': 'playThis',
-    'j': 'savePlayList',
-    'k': 'loadPlayList'
+    'w': 'savePlayList',
+    'r': 'loadPlayList'
 };
 
 var NeteasePlayer = function() {
