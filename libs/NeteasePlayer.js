@@ -59,8 +59,8 @@ var playlistMenuKeys = {
     's': 'togglePlaying',
     'n': 'playNext',
     'o': 'playThis',
-    'j': 'savePlayList',
-    'k': 'loadPlayList'
+    'w': 'savePlayList',
+    'r': 'loadPlayList'
 };
 
 var NeteasePlayer = function() {
@@ -93,13 +93,14 @@ var NeteasePlayer = function() {
  * Debug current states
  */
 NeteasePlayer.prototype.debugPlaylist = function() {
-    console.log('player.playing');
-    console.log(this.player.playing);
+    console.log('player.status');
+    console.log(this.player.status);
+    console.log('player.list');
+    console.log(this.player.list);
     console.log('player.stopAt');
     console.log(this.player.stopAt);
     console.log('isPlaying?');
     console.log(this.isPlaying());
-    console.log(this.lrc);
 }
 
 /**
@@ -155,7 +156,7 @@ NeteasePlayer.prototype.config = function(limit, home, highRate) {
  */
 NeteasePlayer.prototype.isPlaying = function() {
     if (typeof(this.player) === 'undefined') return false;
-    return (this.player.status === 'playing' || (this.player.status === 'stopped' && this.player.playing !== null));
+    return this.player.status === 'playing';
 }
 
 /**
@@ -515,8 +516,9 @@ NeteasePlayer.prototype.playThis = function(songId) {
     var songPos = self.isInPlaylist(songId);
     if (songPos < 0) return;
     self.stopPlaying();
-    var _id = self.player.list[songPos]._id;
-    self.player.play(null, self.player.list.slice(_id));
+    var song = self.player.list[songPos];
+    self.player.stopAt = song;
+    self.play();
 }
 
 /**
@@ -526,14 +528,6 @@ NeteasePlayer.prototype.play = function() {
     var self = this;
     if (typeof(self.player) === 'undefined') return;
     if (self.isPlaying()) return;
-    // ensure only one entry can be played
-    if (self.player.speakers.length > 1) {
-        for (var i = 0; i < self.player.speakers.length - 1; i++) {
-            self.player.speakers.shift();
-        }
-        // self.stopPlaying();
-    }
-
     // if something in the playlist, continue playing from previous one
     if (self.player.stopAt !== null) {
         self.player.play(null, self.player.list.slice(self.player.stopAt._id));
@@ -546,6 +540,7 @@ NeteasePlayer.prototype.play = function() {
     self.player.on('playing', function(item) {
         self.updatePlayingIcon(item.songId);
         self.player.stopAt = null;
+        self.player.status = 'playing';
         self.setBarText('Now playing:', item.text);
         self.menu.draw();
 
@@ -566,6 +561,7 @@ NeteasePlayer.prototype.play = function() {
     self.player.on('playend', function(item) {
         self.player.playing = null;
         self.player.stopAt = item;
+        self.player.status = 'stopped';
         self.menu.update(item.songId, '');
         self.stopLyric();
     });
@@ -580,8 +576,7 @@ NeteasePlayer.prototype.play = function() {
 }
 
 /**
- * Play next song, if nothing playing, play nothing
- * Some problems in using player.next(), and this functions
+ * Play next song, if nothing's playing, do nothing
  */
 NeteasePlayer.prototype.playNext = function() {
     var self = this;
@@ -592,8 +587,6 @@ NeteasePlayer.prototype.playNext = function() {
     if (self.player.list.indexOf(playing) === self.player.list.length - 1) {
         return false;
     }
-    // why i get 'stopped' when call next() twice??
-    // black maggic to tackle this
     var playingId = self.player.playing.songId;
     if (self.player.next()) {
         self.menu.update(playingId, '');
@@ -605,7 +598,7 @@ NeteasePlayer.prototype.playNext = function() {
 NeteasePlayer.prototype.savePlayList = function() {
   var fs = require('fs');
   fs.writeFile(this.home + '/play_list.json', JSON.stringify(this.player.list) , function() {
-    utils.log('Play list Saved.');
+    utils.log('Playlist saved');
   });
 }
 
@@ -614,7 +607,7 @@ NeteasePlayer.prototype.loadPlayList = function() {
     this.player.list = require(this.home + '/play_list.json');
     this.showPlaylistMenu();
   } catch(e) {
-    utils.log('No saved play list.')
+    utils.log('No saved playlist')
   }
 }
 
@@ -625,13 +618,9 @@ NeteasePlayer.prototype.stopPlaying = function() {
     var self = this;
     if (!self.isPlaying()) return false;
     // set up another object
+    self.player.stop();
     self.player.stopAt = self.player.playing;
     self.player.playing = null;
-    // ensure there is only one entry can be played
-    for (var i = 0; i < self.player.speakers.length; i++) {
-        self.player.stop();
-        self.player.speakers.shift();
-    }
     self.player.status = 'stopped';
     self.menu.update(self.player.stopAt.songId, '');
     self.stopLyric();
