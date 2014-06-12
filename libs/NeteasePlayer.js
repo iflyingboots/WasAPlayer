@@ -60,7 +60,8 @@ var playlistMenuKeys = {
     'n': 'playNext',
     'o': 'playThis',
     'w': 'savePlayList',
-    'r': 'loadPlayList'
+    'r': 'loadPlayList',
+    'd': 'removeFromPlayList'
 };
 
 var NeteasePlayer = function() {
@@ -282,8 +283,9 @@ NeteasePlayer.prototype.showPlaylistMenu = function() {
         return;
     };
     // refill bullets
-    self.player.list.forEach(function(item) {
+    self.player.list.forEach(function(item, index) {
         self.menu.add(item.songId, item.text);
+        item._id = index;
         if (self.isPlaying() && self.player.playing.songId === item.songId) {
             self.updatePlayingIcon(item.songId);
         };
@@ -609,6 +611,16 @@ NeteasePlayer.prototype.loadPlayList = function() {
   } catch(e) {
     utils.log('No saved playlist')
   }
+}
+
+NeteasePlayer.prototype.removeFromPlayList = function(songId) {
+  var playlistSongIds = this.player.list.map(function(item) {
+      return item.songId;
+  }), index = playlistSongIds.indexOf(songId);
+
+  if (index > -1) this.player.list.splice(index, 1);
+
+  this.showPlaylistMenu();
 }
 
 /**
