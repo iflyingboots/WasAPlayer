@@ -147,6 +147,8 @@ exports.playlistHelp = function() {
         c.grey('Save Play List ') +
         c.yellow('[r] ') +
         c.grey('Load Play List ') +
+        c.yellow('[d] ') +
+        c.grey('Remove ') +
         c.yellow('[q] ') +
         c.grey('Main menu ');
     return text;
