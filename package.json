@@ -1,6 +1,6 @@
 {
     "name": "netease-player",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "A command line music player tailored for Netease Music.",
     "main": "index.js",
     "author": "Xin Wang <i@wangx.in>",
